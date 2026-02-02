@@ -1,0 +1,271 @@
+import { Service, Feature, Testimonial, FAQ, NavItem, StoreLocation, CleaningStep } from '@/types';
+
+export const navItems: NavItem[] = [
+  { label: 'Home', href: '/' },
+  { label: 'About Us', href: '#about' },
+  { label: 'Services', href: '#services' },
+  { label: 'FAQ', href: '#faq' },
+];
+
+export const services: Service[] = [
+  {
+    id: 1,
+    title: 'Wash & Fold',
+    slug: 'wash-fold',
+    description: 'We efficiently sort and wash your everyday laundry, using professional-grade detergents for a thorough clean.',
+    price: '$4',
+    priceRange: '$2 to $14',
+    duration: '2-3 days',
+    image: 'https://images.unsplash.com/photo-1545173168-9f1947eebb7f?w=400&h=300&fit=crop',
+    icon: '/Images/Home/service/img-1.png',
+    category: 'regular',
+    items: [
+      { id: 1, name: 'Shirt', description: 'Dry Friendly wash', price: 4, image: '/Images/Home/service-section/img-1.png' },
+      { id: 2, name: 'Hoodie', description: 'Dry Friendly wash', price: 4, image: '/Images/Home/service-section/img-2.png' },
+      { id: 3, name: 'Jacket', description: 'Dry Friendly wash', price: 4, image: '/Images/Home/service-section/img-3.png' },
+      { id: 4, name: 'Sweater', description: 'Dry Friendly wash', price: 4, image: '/Images/Home/service-section/img-4.png' },
+      { id: 5, name: 'T-Shirt', description: 'Dry Friendly wash', price: 3, image: '/Images/Home/service-section/img-1.png' },
+      { id: 6, name: 'Jeans', description: 'Dry Friendly wash', price: 5, image: '/Images/Home/service-section/img-2.png' },
+      { id: 7, name: 'Coat', description: 'Dry Friendly wash', price: 8, image: '/Images/Home/service-section/img-3.png' },
+      { id: 8, name: 'Dress', description: 'Dry Friendly wash', price: 6, image: '/Images/Home/service-section/img-4.png' },
+    ],
+  },
+  {
+    id: 2,
+    title: 'Pressing',
+    slug: 'pressing',
+    description: 'Professional pressing services to ensure your clothes are crisp and wrinkle-free for any occasion.',
+    price: '$3',
+    priceRange: '$2 to $14',
+    duration: '1-2 days',
+    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop',
+    icon: '/Images/Home/service/img-2.png',
+    category: 'regular',
+    bestSeller: true,
+    items: [
+      { id: 1, name: 'Shirt', description: 'Professional pressing', price: 3, image: '/Images/Home/service-section/img-1.png' },
+      { id: 2, name: 'Pants', description: 'Professional pressing', price: 3, image: '/Images/Home/service-section/img-2.png' },
+      { id: 3, name: 'Dress', description: 'Professional pressing', price: 5, image: '/Images/Home/service-section/img-3.png' },
+      { id: 4, name: 'Suit', description: 'Professional pressing', price: 8, image: '/Images/Home/service-section/img-4.png' },
+      { id: 5, name: 'Blazer', description: 'Professional pressing', price: 6, image: '/Images/Home/service-section/img-1.png' },
+    ],
+  },
+  {
+    id: 3,
+    title: 'Dry Cleaning',
+    slug: 'dry-cleaning',
+    description: 'Specialized dry cleaning for delicate fabrics like silk, wool, and cashmere to maintain their quality.',
+    price: '$5',
+    priceRange: '$2 to $14',
+    duration: '24 Hours',
+    image: 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=400&h=300&fit=crop',
+    icon: '/Images/Home/service/img-2.png',
+    category: 'special',
+    items: [
+      { id: 1, name: 'Suit', description: 'Delicate dry cleaning', price: 12, image: '/Images/Home/service-section/img-1.png' },
+      { id: 2, name: 'Dress', description: 'Delicate dry cleaning', price: 10, image: '/Images/Home/service-section/img-2.png' },
+      { id: 3, name: 'Coat', description: 'Delicate dry cleaning', price: 14, image: '/Images/Home/service-section/img-3.png' },
+      { id: 4, name: 'Blazer', description: 'Delicate dry cleaning', price: 9, image: '/Images/Home/service-section/img-4.png' },
+      { id: 5, name: 'Silk Garment', description: 'Delicate dry cleaning', price: 8, image: '/Images/Home/service-section/img-1.png' },
+    ],
+  },
+  {
+    id: 4,
+    title: 'Stain Removal',
+    slug: 'stain-removal',
+    description: 'Expert stain removal services for tough stains. We treat your clothes with care using specialized techniques.',
+    price: '$5',
+    priceRange: '$2 to $14',
+    duration: '4-5 days',
+    image: 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=400&h=300&fit=crop',
+    icon: '/Images/Home/service/img-4.png',
+    category: 'regular',
+    items: [
+      { id: 1, name: 'Wine Stain', description: 'Stain removal', price: 5, image: '/Images/Home/service-section/img-1.png' },
+      { id: 2, name: 'Oil Stain', description: 'Stain removal', price: 6, image: '/Images/Home/service-section/img-2.png' },
+      { id: 3, name: 'Ink Stain', description: 'Stain removal', price: 7, image: '/Images/Home/service-section/img-3.png' },
+      { id: 4, name: 'Blood Stain', description: 'Stain removal', price: 6, image: '/Images/Home/service-section/img-4.png' },
+    ],
+  },
+  {
+    id: 5,
+    title: 'Hand Wash',
+    slug: 'hand-wash',
+    description: 'Gentle hand washing for your most delicate items that need special care and attention.',
+    price: '$6',
+    priceRange: '$2 to $14',
+    duration: '2-3 days',
+    image: 'https://images.unsplash.com/photo-1489274495757-95c7c837b101?w=400&h=300&fit=crop',
+    icon: '/Images/Home/service/img-3.png',
+    category: 'special',
+    items: [
+      { id: 1, name: 'Delicate Shirt', description: 'Hand wash care', price: 6, image: '/Images/Home/service-section/img-1.png' },
+      { id: 2, name: 'Wool Sweater', description: 'Hand wash care', price: 7, image: '/Images/Home/service-section/img-2.png' },
+      { id: 3, name: 'Silk Scarf', description: 'Hand wash care', price: 5, image: '/Images/Home/service-section/img-3.png' },
+      { id: 4, name: 'Cashmere', description: 'Hand wash care', price: 10, image: '/Images/Home/service-section/img-4.png' },
+    ],
+  },
+  {
+    id: 6,
+    title: 'Special Pressing',
+    slug: 'special-pressing',
+    description: 'Premium pressing service for delicate fabrics and formal wear. Perfect for special occasions.',
+    price: '$7',
+    priceRange: '$2 to $14',
+    duration: '1-2 days',
+    image: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop',
+    icon: '/Images/Home/service/img-2.png',
+    category: 'special',
+    bestSeller: true,
+    items: [
+      { id: 1, name: 'Wedding Dress', description: 'Special pressing', price: 15, image: '/Images/Home/service-section/img-1.png' },
+      { id: 2, name: 'Tuxedo', description: 'Special pressing', price: 12, image: '/Images/Home/service-section/img-2.png' },
+      { id: 3, name: 'Evening Gown', description: 'Special pressing', price: 14, image: '/Images/Home/service-section/img-3.png' },
+      { id: 4, name: 'Silk Suit', description: 'Special pressing', price: 10, image: '/Images/Home/service-section/img-4.png' },
+    ],
+  },
+  {
+    id: 7,
+    title: 'Hypoallergenic Wash',
+    slug: 'hypoallergenic-wash',
+    description: 'Special washing service using hypoallergenic detergents for sensitive skin. Safe for children and adults.',
+    price: '$6',
+    priceRange: '$2 to $14',
+    duration: '2-3 days',
+    image: 'https://images.unsplash.com/photo-1582735689369-4fe89db7114c?w=400&h=300&fit=crop',
+    icon: '/Images/Home/service/img-3.png',
+    category: 'special',
+    bestSeller: true,
+    items: [
+      { id: 1, name: 'Baby Clothes', description: 'Hypoallergenic wash', price: 5, image: '/Images/Home/service-section/img-1.png' },
+      { id: 2, name: 'Bedding', description: 'Hypoallergenic wash', price: 8, image: '/Images/Home/service-section/img-2.png' },
+      { id: 3, name: 'Towels', description: 'Hypoallergenic wash', price: 4, image: '/Images/Home/service-section/img-3.png' },
+      { id: 4, name: 'Delicate Wear', description: 'Hypoallergenic wash', price: 6, image: '/Images/Home/service-section/img-4.png' },
+    ],
+  },
+];
+
+export const cleaningSteps: CleaningStep[] = [
+  {
+    id: 1,
+    title: 'Book Your Service',
+    description: 'Choose your laundry service by selecting date, and time using our easy online booking system.',
+    icon: '📅',
+    image: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=400&h=300&fit=crop',
+  },
+  {
+    id: 2,
+    title: 'Done With Care',
+    description: 'Our professionals thoroughly clean your garments using premium detergents and advanced techniques.',
+    icon: '✨',
+    image: 'https://images.unsplash.com/photo-1517677208171-0bc6725a3e60?w=400&h=300&fit=crop',
+  },
+  {
+    id: 3,
+    title: 'Enjoy The Shine',
+    description: 'Receive your garments at your door fresh and spotless ready to wear and enjoy.',
+    icon: '🌟',
+    image: 'https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=400&h=300&fit=crop',
+  },
+];
+
+export const features: Feature[] = [
+  {
+    id: 1,
+    title: 'Guaranteed Quality',
+    description: 'We use premium detergents and the latest cleaning technology to ensure your garments receive the best possible care.',
+    icon: '✓',
+  },
+  {
+    id: 2,
+    title: 'Pro Cleaning Masters',
+    description: 'Our team of certified experts brings years of experience to handle all types of fabrics with precision.',
+    icon: '👔',
+  },
+  {
+    id: 3,
+    title: 'Green & Safe Cleaning',
+    description: 'Eco-friendly cleaning solutions that are gentle on your clothes and kind to the environment.',
+    icon: '🌿',
+  },
+  {
+    id: 4,
+    title: 'Timely Services',
+    description: 'We respect your time. Get your laundry done and delivered exactly when you need it.',
+    icon: '⏰',
+  },
+];
+
+export const testimonials: Testimonial[] = [
+  {
+    id: 1,
+    name: 'Sarah Johnson',
+    role: 'Business Professional',
+    content: 'Exceptional service! My suits have never looked better. The attention to detail is remarkable.',
+    rating: 5,
+    image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop',
+  },
+  {
+    id: 2,
+    name: 'Michael Chen',
+    role: 'Restaurant Owner',
+    content: 'They handle all our restaurant linens perfectly. Reliable, professional, and always on time.',
+    rating: 5,
+    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop',
+  },
+  {
+    id: 3,
+    name: 'Emily Davis',
+    role: 'Working Mom',
+    content: 'A lifesaver for busy families! The pickup and delivery service is incredibly convenient.',
+    rating: 5,
+    image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop',
+  },
+];
+
+export const faqs: FAQ[] = [
+  {
+    id: 1,
+    question: 'How do I place an order with a promo?',
+    answer: 'To place an order with a promo code, simply enter the code at checkout. The discount will be automatically applied to your order total. You can find promo codes in our emails, social media, or through special promotions.',
+  },
+  {
+    id: 2,
+    question: 'What is your turnaround time for laundry services?',
+    answer: 'Our standard turnaround time is 24-48 hours depending on the service. Express same-day service is available for an additional fee. We always aim to deliver your clothes fresh and ready when you need them.',
+  },
+  {
+    id: 3,
+    question: 'Do you offer eco-friendly cleaning options?',
+    answer: 'Yes! We are committed to sustainability. We offer eco-friendly detergents and cleaning solutions that are gentle on your clothes and the environment. Just select the eco-friendly option when booking.',
+  },
+  {
+    id: 4,
+    question: 'Can I track or rebook my pickup?',
+    answer: 'Absolutely! You can track your order in real-time through our app or website. You can also easily reschedule pickups and deliveries at any time through your account dashboard.',
+  },
+];
+
+export const storeLocations: StoreLocation[] = [
+  {
+    id: 1,
+    name: 'CleanPress Laundry',
+    address: '2118 Thornridge Cir, Syracuse',
+    phone: '(239) 555-0108',
+    hours: 'Mon-Sat: 8AM-8PM',
+  },
+  {
+    id: 2,
+    name: 'CleanPress Laundry',
+    address: '3461 Whittier Ave, Syracuse',
+    phone: '(239) 555-0109',
+    hours: 'Mon-Sat: 8AM-8PM',
+  },
+  {
+    id: 3,
+    name: 'CleanPress Laundry',
+    address: '4234 Lighthouse Ln, Syracuse',
+    phone: '(239) 555-0110',
+    hours: 'Mon-Sat: 8AM-8PM',
+  },
+];

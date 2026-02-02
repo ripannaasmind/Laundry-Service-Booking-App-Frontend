@@ -1,0 +1,10 @@
+export { default as Hero } from './Hero';
+export { default as Services } from './Services';
+export { default as About } from './About';
+export { default as CleaningJourney } from './CleaningJourney';
+export { default as Features } from './Features';
+export { default as Satisfaction } from './Satisfaction';
+export { default as Testimonials } from './Testimonials';
+export { default as ServiceNetwork } from './ServiceNetwork';
+export { default as AppDownload } from './AppDownload';
+export { default as FAQ } from './FAQ';
