@@ -86,7 +86,8 @@ export default function LanguageSettingsPage() {
         {/* Current Language */}
         <div className="bg-blue-50 dark:bg-blue-900/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-4">
           <div className="flex items-center gap-3">
-            <span className="text-3xl">{getFlagEmoji(currentLanguage)}</span>
+            {/* <span className="text-3xl">{getFlagEmoji(currentLanguage)}</span> */}
+             <FlagImage langCode={currentLanguage} size={30} />
             <div>
               <div className="text-sm text-blue-600 dark:text-blue-400 font-medium">
                 Current Language
@@ -125,7 +126,8 @@ export default function LanguageSettingsPage() {
               >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <span className="text-2xl">{getFlagEmoji(lang.name)}</span>
+                    {/* <span className="text-2xl">{getFlagEmoji(lang.name)}</span> */}
+                     <FlagImage langCode={lang.name} size={30} />
                     <div>
                       <div className="font-medium text-gray-900 dark:text-gray-100">
                         {lang.title}
@@ -152,20 +154,46 @@ export default function LanguageSettingsPage() {
   );
 }
 
-// Helper function to get flag emoji
-function getFlagEmoji(langCode: string): string {
-  const flagMap: Record<string, string> = {
-    'en': '🇬🇧', 'bn': '🇧🇩', 'ar': '🇸🇦', 'hi': '🇮🇳', 'es': '🇪🇸',
-    'fr': '🇫🇷', 'de': '🇩🇪', 'it': '🇮🇹', 'pt': '🇵🇹', 'ru': '🇷🇺',
-    'ja': '🇯🇵', 'zh-CN': '🇨🇳', 'ko': '🇰🇷', 'tr': '🇹🇷', 'pl': '🇵🇱',
-    'nl': '🇳🇱', 'sv': '🇸🇪', 'da': '🇩🇰', 'no': '🇳🇴', 'fi': '🇫🇮',
-    'el': '🇬🇷', 'cs': '🇨🇿', 'ro': '🇷🇴', 'hu': '🇭🇺', 'sr': '🇷🇸',
-    'hr': '🇭🇷', 'bg': '🇧🇬', 'sk': '🇸🇰', 'sl': '🇸🇮', 'lt': '🇱🇹',
-    'lv': '🇱🇻', 'et': '🇪🇪', 'uk': '🇺🇦', 'he': '🇮🇱', 'ur': '🇵🇰',
-    'fa': '🇮🇷', 'ta': '🇮🇳', 'te': '🇮🇳', 'mr': '🇮🇳', 'gu': '🇮🇳',
-    'pa': '🇮🇳', 'kn': '🇮🇳', 'ml': '🇮🇳', 'si': '🇱🇰', 'ne': '🇳🇵',
-    'th': '🇹🇭', 'vi': '🇻🇳', 'id': '🇮🇩', 'ms': '🇲🇾', 'tl': '🇵🇭',
+// Helper function to get country code for flag image
+function getCountryCode(langCode: string): string {
+  const countryMap: Record<string, string> = {
+    'en': 'gb', 'bn': 'bd', 'ar': 'sa', 'hi': 'in', 'es': 'es',
+    'fr': 'fr', 'de': 'de', 'it': 'it', 'pt': 'pt', 'ru': 'ru',
+    'ja': 'jp', 'zh-CN': 'cn', 'ko': 'kr', 'tr': 'tr', 'pl': 'pl',
+    'nl': 'nl', 'sv': 'se', 'da': 'dk', 'no': 'no', 'fi': 'fi',
+    'el': 'gr', 'cs': 'cz', 'ro': 'ro', 'hu': 'hu', 'sr': 'rs',
+    'hr': 'hr', 'bg': 'bg', 'sk': 'sk', 'sl': 'si', 'lt': 'lt',
+    'lv': 'lv', 'et': 'ee', 'uk': 'ua', 'he': 'il', 'ur': 'pk',
+    'fa': 'ir', 'ta': 'in', 'te': 'in', 'mr': 'in', 'gu': 'in',
+    'pa': 'in', 'kn': 'in', 'ml': 'in', 'si': 'lk', 'ne': 'np',
+    'th': 'th', 'vi': 'vn', 'id': 'id', 'ms': 'my', 'tl': 'ph',
   };
   
-  return flagMap[langCode] || '🌐';
+  return countryMap[langCode] || 'un';
+}
+
+// Flag Image component
+function FlagImage({ langCode, size = 24 }: { langCode: string; size?: number }) {
+  const countryCode = getCountryCode(langCode);
+  const height = Math.round(size * 0.6); // Height is 70% of width
+  return (
+    <div 
+      style={{ 
+        width: size, 
+        height: height, 
+        minWidth: size, 
+        minHeight: height,
+        overflow: 'hidden',
+        borderRadius: '4px'
+      }}
+      className="flex items-center justify-center bg-gray-100 dark:bg-gray-700"
+    >
+      <img 
+        src={`https://flagcdn.com/w80/${countryCode}.png`}
+        srcSet={`https://flagcdn.com/w160/${countryCode}.png 2x`}
+        alt={`${langCode} flag`}
+        className="w-full h-full object-cover"
+      />
+    </div>
+  );
 }

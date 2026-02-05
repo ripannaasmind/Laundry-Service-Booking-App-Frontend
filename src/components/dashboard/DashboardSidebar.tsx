@@ -50,11 +50,11 @@ const DashboardSidebar = ({ className = '' }: DashboardSidebarProps) => {
   const isSettingsActive = pathname.includes('/dashboard/settings');
 
   return (
-    <aside className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden ${className}`}>
+    <aside className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 ${className}`}>
       {/* Profile Section */}
       <div className="p-6 sm:p-8 flex flex-col items-center border-b border-gray-100 dark:border-gray-700">
         <div className="relative group">
-          <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-[#0F7BA0]/20 shadow-lg bg-gray-200 dark:bg-gray-600">
+          <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-[#0F7BA0]/20 shadow-lg bg-gray-200 dark:bg-gray-600">
             <Image
               src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face"
               alt="Profile"

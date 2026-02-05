@@ -1,14 +1,21 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuthStore } from '@/store/authStore';
+import { FiUser, FiLogOut, FiGrid } from 'react-icons/fi';
 
 const Header = () => {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const profileRef = useRef<HTMLDivElement>(null);
   const { t } = useTheme();
+  const { user, logout, isAuthenticated, checkAuth } = useAuthStore();
+  const router = useRouter();
 
   const navItems = [
     { label: t('home'), href: '/' },
@@ -24,6 +31,39 @@ const Header = () => {
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Check auth status on mount
+  useEffect(() => {
+    checkAuth();
+  }, [checkAuth]);
+
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
+        setIsProfileOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Handle logout
+  const onLogout = () => {
+    logout();
+    setIsProfileOpen(false);
+    router.push('/');
+  };
+
+  // Get user initials for avatar
+  const getUserInitials = () => {
+    if (!user?.name) return 'U';
+    const names = user.name.split(' ');
+    if (names.length >= 2) {
+      return `${names[0][0]}${names[1][0]}`.toUpperCase();
+    }
+    return user.name.substring(0, 2).toUpperCase();
+  };
 
   return (
     <header
@@ -61,11 +101,82 @@ const Header = () => {
             ))}
           </div>
 
-          {/* Login Button */}
-          <div className="hidden md:block">
-            <Link href="/login" className="bg-[#0f2744] dark:bg-[#0F7BA0] text-white px-16 py-3 rounded font-semibold transition-all duration-300 hover:bg-[#1a3a5c] dark:hover:bg-[#0d6a8c] hover:shadow-lg hover:-translate-y-0.5">
-              {t('login')}
-            </Link>
+          {/* Login/Profile Button */}
+          <div className="hidden md:block relative" ref={profileRef}>
+            {isAuthenticated && user ? (
+              <div>
+                {/* Profile Button */}
+                <button
+                  onClick={() => setIsProfileOpen(!isProfileOpen)}
+                  className="flex items-center gap-3 bg-[#0f2744] dark:bg-[#0F7BA0] text-white px-4 py-2 rounded-lg font-semibold transition-all duration-300 hover:bg-[#1a3a5c] dark:hover:bg-[#0d6a8c] hover:shadow-lg"
+                >
+                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-sm">
+                    {getUserInitials()}
+                  </div>
+                  <span className="hidden lg:block">{user.name}</span>
+                  <svg
+                    className={`w-4 h-4 transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {/* Profile Dropdown */}
+                {isProfileOpen && (
+                  <div className="absolute top-full right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 animate-fade-in-up z-50">
+                    {/* User Info */}
+                    <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                      <p className="text-sm font-semibold text-[#0f2744] dark:text-white">{user.name}</p>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{user.email}</p>
+                      {user.phone && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400">{user.phone}</p>
+                      )}
+                    </div>
+
+                    {/* Menu Items */}
+                    <div className="py-2">
+                      <Link
+                        href="/dashboard/orders"
+                        onClick={() => setIsProfileOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#5a6a7a] dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <FiGrid className="w-4 h-4" />
+                        <span>Dashboard</span>
+                      </Link>
+                      <Link
+                        href="/dashboard/profile"
+                        onClick={() => setIsProfileOpen(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-[#5a6a7a] dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      >
+                        <FiUser className="w-4 h-4" />
+                        <span>Profile</span>
+                      </Link>
+                    </div>
+
+                    {/* Logout */}
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-2">
+                      <button
+                        onClick={onLogout}
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                      >
+                        <FiLogOut className="w-4 h-4" />
+                        <span>Logout</span>
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Link 
+                href="/login" 
+                className="bg-[#0f2744] dark:bg-[#0F7BA0] text-white px-16 py-3 rounded font-semibold transition-all duration-300 hover:bg-[#1a3a5c] dark:hover:bg-[#0d6a8c] hover:shadow-lg hover:-translate-y-0.5"
+              >
+                {t('login')}
+              </Link>
+            )}
           </div>
 
           {/* Mobile Menu Button */}
@@ -90,7 +201,7 @@ const Header = () => {
           className={`md:hidden absolute top-full left-0 right-0 bg-white dark:bg-gray-900 shadow-lg dark:shadow-gray-800/30 transition-all duration-300 ${
             isMobileMenuOpen
               ? 'opacity-100 visible translate-y-0'
-              : 'opacity-0 invisible -translate-y-4'
+              : 'opacity-0 invisible -translate-y-4' 
           }`}
         >
           <div className="flex flex-col p-4 gap-4">
@@ -104,9 +215,53 @@ const Header = () => {
                 {item.label}
               </Link>
             ))}
-            <Link href="/login" className="bg-[#0f2744] dark:bg-[#0F7BA0] text-white px-16 py-3 rounded font-semibold w-full text-center">
-              {t('login')}
-            </Link>
+            {isAuthenticated && user ? (
+              <>
+                {/* User Info */}
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-4 pb-2">
+                  <p className="text-sm font-semibold text-[#0f2744] dark:text-white">{user.name}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{user.email}</p>
+                </div>
+                
+                {/* Dashboard Links */}
+                <Link 
+                  href="/dashboard/orders"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 text-[#5a6a7a] dark:text-gray-300 font-medium py-2 hover:text-[#1A3A5D] dark:hover:text-white transition-colors"
+                >
+                  <FiGrid className="w-4 h-4" />
+                  <span>Dashboard</span>
+                </Link>
+                <Link 
+                  href="/dashboard/profile"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center gap-2 text-[#5a6a7a] dark:text-gray-300 font-medium py-2 hover:text-[#1A3A5D] dark:hover:text-white transition-colors"
+                >
+                  <FiUser className="w-4 h-4" />
+                  <span>Profile</span>
+                </Link>
+                
+                {/* Logout Button */}
+                <button 
+                  onClick={() => {
+                    onLogout();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="flex items-center justify-center gap-2 bg-red-600 dark:bg-red-500 text-white px-16 py-3 rounded font-semibold w-full hover:bg-red-700 dark:hover:bg-red-600 transition-colors mt-2"
+                >
+                  <FiLogOut className="w-4 h-4" />
+                  <span>Logout</span>
+                </button>
+              </>
+            ) : (
+              <Link 
+                href="/login" 
+                className="bg-[#0f2744] dark:bg-[#0F7BA0] text-white px-16 py-3 rounded font-semibold w-full text-center"
+                onClick={() => setIsMobileMenuOpen(false)}
+              >
+                {t('login')}
+              </Link>
+            )}
           </div>
         </div>
       </div>

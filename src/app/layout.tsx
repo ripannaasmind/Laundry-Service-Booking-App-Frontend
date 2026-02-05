@@ -4,6 +4,7 @@ import Script from "next/script";
 import "./globals.css";
 import { Header, Footer } from "@/components/layout";
 import { ThemeProvider } from "@/context/ThemeContext";
+import AuthContextProvider from "@/context/AuthContext";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -29,12 +30,14 @@ export default function RootLayout({
         <Script src="//translate.google.com/translate_a/element.js?cb=TranslateInit" strategy="afterInteractive" />
       </head>
       <body className={`${inter.variable} antialiased bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors duration-300`}>
-        <ThemeProvider>
-          <div id="google_translate_element" style={{ display: 'none' }}></div>
-          <Header />
-          <main>{children}</main>
-          <Footer />
-        </ThemeProvider>
+        <AuthContextProvider>
+          <ThemeProvider>
+            <div id="google_translate_element" style={{ display: 'none' }}></div>
+            <Header />
+            <main>{children}</main>
+            <Footer />
+          </ThemeProvider>
+        </AuthContextProvider>
       </body>
     </html>
   );

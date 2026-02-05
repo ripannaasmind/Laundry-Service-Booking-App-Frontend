@@ -17,13 +17,13 @@ import { getAnalytics, Analytics, isSupported } from 'firebase/analytics';
 
 // Firebase configuration
 const firebaseConfig = {
-  apiKey: "AIzaSyBzd1_Per5H-HPRQ32-7frkuyoj0DFDwB0",
-  authDomain: "laundry-service-booking-app.firebaseapp.com",
-  projectId: "laundry-service-booking-app",
-  storageBucket: "laundry-service-booking-app.firebasestorage.app",
-  messagingSenderId: "705972337399",
-  appId: "1:705972337399:web:5a2d5dd270a8fe2b56f1f2",
-  measurementId: "G-N8QY71FHCT"
+  apiKey: "AIzaSyAea_Tdy31rxiIIz1mbtIEYHvcAzy3Tah4",
+  authDomain: "flutter-22f32.firebaseapp.com",
+  projectId: "flutter-22f32",
+  storageBucket: "flutter-22f32.firebasestorage.app",
+  messagingSenderId: "842164127167",
+  appId: "1:842164127167:web:c8e07af6ec05b68fe7cd0a",
+  measurementId: "G-J0RLL7VJ96"
 };
 
 // Initialize Firebase
@@ -37,6 +37,7 @@ if (!getApps().length) {
 }
 
 const auth: Auth = getAuth(app);
+export const auths =getAuth(app);
 
 // Initialize Analytics (client-side only)
 if (typeof window !== 'undefined') {
@@ -49,6 +50,9 @@ if (typeof window !== 'undefined') {
 
 // Google Provider
 const googleProvider = new GoogleAuthProvider();
+googleProvider.setCustomParameters({
+  prompt: 'select_account'
+});
 
 // Store confirmation result globally
 let confirmationResult: ConfirmationResult | null = null;
@@ -59,6 +63,7 @@ interface AuthResponse {
   user?: User;
   error?: string;
 }
+
 
 // Phone Auth Functions
 export const setupRecaptcha = (containerId: string): RecaptchaVerifier => {
@@ -182,4 +187,4 @@ export const onAuthStateChange = (callback: (user: User | null) => void) => {
   return auth.onAuthStateChanged(callback);
 };
 
-export { auth, app, analytics };
+export { auth, app, analytics, googleProvider };

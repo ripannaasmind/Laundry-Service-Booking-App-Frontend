@@ -1,9 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
+import { usePasswordResetStore } from '@/store/passwordResetStore';
 
 const CreatePasswordPage = () => {
   const router = useRouter();
@@ -11,17 +12,36 @@ const CreatePasswordPage = () => {
     password: '',
     confirmPassword: '',
   });
-  const [errors, setErrors] = useState({
+  const [validationErrors, setValidationErrors] = useState({
     password: '',
     confirmPassword: '',
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
   const [touched, setTouched] = useState({
     password: false,
     confirmPassword: false,
   });
+
+  const { 
+    emailOrPhone, 
+    resetToken, 
+    resetPassword, 
+    isLoading, 
+    error, 
+    clearError,
+    clearState 
+  } = usePasswordResetStore();
+
+  useEffect(() => {
+    clearError();
+    
+    // Redirect if no emailOrPhone or resetToken in store
+    if (!emailOrPhone || !resetToken) {
+      console.log('Missing emailOrPhone or resetToken, redirecting to forgot-password');
+      router.push('/forgot-password');
+    }
+  }, [emailOrPhone, resetToken, router, clearError]);
 
   const validatePassword = (password: string) => {
     if (!password) return 'Password is required';
@@ -44,16 +64,16 @@ const CreatePasswordPage = () => {
     
     if (touched[name as keyof typeof touched]) {
       if (name === 'password') {
-        setErrors((prev) => ({ ...prev, password: validatePassword(value) }));
+        setValidationErrors((prev) => ({ ...prev, password: validatePassword(value) }));
       } else if (name === 'confirmPassword') {
-        setErrors((prev) => ({ ...prev, confirmPassword: validateConfirmPassword(value) }));
+        setValidationErrors((prev) => ({ ...prev, confirmPassword: validateConfirmPassword(value) }));
       }
     }
     
     // Re-validate confirm password when password changes
     if (name === 'password' && touched.confirmPassword && formData.confirmPassword) {
       const confirmError = value !== formData.confirmPassword ? 'Passwords do not match' : '';
-      setErrors((prev) => ({ ...prev, confirmPassword: confirmError }));
+      setValidationErrors((prev) => ({ ...prev, confirmPassword: confirmError }));
     }
   };
 
@@ -62,9 +82,9 @@ const CreatePasswordPage = () => {
     setTouched((prev) => ({ ...prev, [name]: true }));
     
     if (name === 'password') {
-      setErrors((prev) => ({ ...prev, password: validatePassword(value) }));
+      setValidationErrors((prev) => ({ ...prev, password: validatePassword(value) }));
     } else if (name === 'confirmPassword') {
-      setErrors((prev) => ({ ...prev, confirmPassword: validateConfirmPassword(value) }));
+      setValidationErrors((prev) => ({ ...prev, confirmPassword: validateConfirmPassword(value) }));
     }
   };
 
@@ -74,7 +94,7 @@ const CreatePasswordPage = () => {
     const passwordError = validatePassword(formData.password);
     const confirmPasswordError = validateConfirmPassword(formData.confirmPassword);
     
-    setErrors({
+    setValidationErrors({
       password: passwordError,
       confirmPassword: confirmPasswordError,
     });
@@ -84,11 +104,20 @@ const CreatePasswordPage = () => {
       confirmPassword: true,
     });
 
-    if (!passwordError && !confirmPasswordError) {
-      setIsLoading(true);
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      setIsLoading(false);
-      router.push('/success');
+    if (!passwordError && !confirmPasswordError && emailOrPhone && resetToken) {
+      console.log('Resetting password for:', emailOrPhone);
+      const success = await resetPassword({
+        emailOrPhone,
+        newPassword: formData.password,
+        confirmPassword: formData.confirmPassword,
+        resetToken,
+      });
+      
+      if (success) {
+        console.log('Password reset successfully, navigating to success page');
+        clearState();
+        router.push('/success');
+      }
     }
   };
 
@@ -128,7 +157,7 @@ const CreatePasswordPage = () => {
           {/* Logo */}
           <div className="flex justify-center mb-6 sm:mb-8">
             <Image
-              src="/Images/logo-2.png"
+              src="/Images/logo/header.png"
               alt="Ultra Wash Logo"
               width={120}
               height={50}
@@ -146,6 +175,13 @@ const CreatePasswordPage = () => {
             </p>
           </div>
 
+          {/* API Error Display */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm animate-fade-in mb-4">
+              {error}
+            </div>
+          )}
+
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
             {/* New Password Input */}
@@ -153,7 +189,7 @@ const CreatePasswordPage = () => {
               <label className="block text-xs sm:text-sm font-medium text-[#0f2744]">
                 New Password
               </label>
-              <div className={`relative transition-all duration-300 ${errors.password && touched.password ? 'animate-shake' : ''}`}>
+              <div className={`relative transition-all duration-300 ${validationErrors.password && touched.password ? 'animate-shake' : ''}`}>
                 <div className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400">
                   <FiLock className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
@@ -165,7 +201,7 @@ const CreatePasswordPage = () => {
                   onBlur={handleBlur}
                   placeholder="••••••••"
                   className={`w-full pl-10 sm:pl-12 pr-12 py-3 sm:py-3.5 border rounded-lg sm:rounded-xl text-sm sm:text-base text-[#0f2744] placeholder-gray-400 focus:outline-none transition-all duration-300 ${
-                    errors.password && touched.password
+                    validationErrors.password && touched.password
                       ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-200'
                       : 'border-gray-200 focus:border-[#0F7BA0] focus:ring-2 focus:ring-[#0F7BA0]/20'
                   }`}
@@ -182,8 +218,8 @@ const CreatePasswordPage = () => {
                   )}
                 </button>
               </div>
-              {errors.password && touched.password && (
-                <p className="text-red-500 text-xs pl-1 animate-fade-in">{errors.password}</p>
+              {validationErrors.password && touched.password && (
+                <p className="text-red-500 text-xs pl-1 animate-fade-in">{validationErrors.password}</p>
               )}
               {/* Password Strength Indicator */}
               {formData.password && (
@@ -210,7 +246,7 @@ const CreatePasswordPage = () => {
               <label className="block text-xs sm:text-sm font-medium text-[#0f2744]">
                 Confirm New Password
               </label>
-              <div className={`relative transition-all duration-300 ${errors.confirmPassword && touched.confirmPassword ? 'animate-shake' : ''}`}>
+              <div className={`relative transition-all duration-300 ${validationErrors.confirmPassword && touched.confirmPassword ? 'animate-shake' : ''}`}>
                 <div className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400">
                   <FiLock className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
@@ -222,7 +258,7 @@ const CreatePasswordPage = () => {
                   onBlur={handleBlur}
                   placeholder="••••••••"
                   className={`w-full pl-10 sm:pl-12 pr-12 py-3 sm:py-3.5 border rounded-lg sm:rounded-xl text-sm sm:text-base text-[#0f2744] placeholder-gray-400 focus:outline-none transition-all duration-300 ${
-                    errors.confirmPassword && touched.confirmPassword
+                    validationErrors.confirmPassword && touched.confirmPassword
                       ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-200'
                       : 'border-gray-200 focus:border-[#0F7BA0] focus:ring-2 focus:ring-[#0F7BA0]/20'
                   }`}
@@ -239,8 +275,8 @@ const CreatePasswordPage = () => {
                   )}
                 </button>
               </div>
-              {errors.confirmPassword && touched.confirmPassword && (
-                <p className="text-red-500 text-xs pl-1 animate-fade-in">{errors.confirmPassword}</p>
+              {validationErrors.confirmPassword && touched.confirmPassword && (
+                <p className="text-red-500 text-xs pl-1 animate-fade-in">{validationErrors.confirmPassword}</p>
               )}
             </div>
 

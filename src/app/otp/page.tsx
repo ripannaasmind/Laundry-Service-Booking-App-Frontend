@@ -4,26 +4,43 @@ import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { usePasswordResetStore } from '@/store/passwordResetStore';
 
 const OtpPage = () => {
   const router = useRouter();
   const [otp, setOtp] = useState(['', '', '', '', '', '']);
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [validationError, setValidationError] = useState('');
   const [resendTimer, setResendTimer] = useState(60);
   const [canResend, setCanResend] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+  const { 
+    emailOrPhone, 
+    verifyOtp, 
+    forgotPassword, 
+    isLoading, 
+    error,
+    clearError 
+  } = usePasswordResetStore();
+
   useEffect(() => {
     inputRefs.current[0]?.focus();
-  }, []);
+    clearError();
+    
+    // Redirect if no emailOrPhone in store
+    if (!emailOrPhone) {
+      console.log('No emailOrPhone found, redirecting to forgot-password');
+      router.push('/forgot-password');
+    }
+  }, [emailOrPhone, router, clearError]);
 
   useEffect(() => {
     if (resendTimer > 0) {
       const timer = setTimeout(() => setResendTimer(resendTimer - 1), 1000);
       return () => clearTimeout(timer);
+    } else {
+      setCanResend(true);
     }
-    // canResend will be determined by resendTimer === 0
   }, [resendTimer]);
 
   const handleChange = (index: number, value: string) => {
@@ -32,7 +49,8 @@ const OtpPage = () => {
     const newOtp = [...otp];
     newOtp[index] = value.slice(-1);
     setOtp(newOtp);
-    setError('');
+    setValidationError('');
+    clearError();
 
     // Auto-focus next input
     if (value && index < 5) {
@@ -60,16 +78,17 @@ const OtpPage = () => {
   };
 
   const handleResend = async () => {
-    if (!canResend) return;
+    if (!canResend || !emailOrPhone) return;
     
     setCanResend(false);
     setResendTimer(60);
     setOtp(['', '', '', '', '', '']);
-    setError('');
+    setValidationError('');
     inputRefs.current[0]?.focus();
     
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    // Call forgot password API again to resend OTP
+    console.log('Resending OTP to:', emailOrPhone);
+    await forgotPassword(emailOrPhone);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -78,22 +97,22 @@ const OtpPage = () => {
     const otpValue = otp.join('');
     
     if (otpValue.length !== 6) {
-      setError('Please enter the complete 6-digit OTP');
+      setValidationError('Please enter the complete 6-digit OTP');
       return;
     }
 
-    setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    
-    // Simulate OTP verification (for demo, accept any 6-digit OTP)
-    if (otpValue === '000000') {
-      setError('Invalid OTP. Please try again.');
-      setIsLoading(false);
+    if (!emailOrPhone) {
+      setValidationError('Email/Phone not found. Please start over.');
       return;
     }
+
+    console.log('Verifying OTP:', { emailOrPhone, otp: otpValue });
+    const success = await verifyOtp(emailOrPhone, otpValue);
     
-    setIsLoading(false);
-    router.push('/create-password');
+    if (success) {
+      console.log('OTP verified successfully, navigating to create-password');
+      router.push('/create-password');
+    }
   };
 
   return (
@@ -118,7 +137,7 @@ const OtpPage = () => {
           {/* Logo */}
           <div className="flex justify-center mb-6 sm:mb-8">
             <Image
-              src="/Images/logo-2.png"
+              src="/Images/logo/header.png"
               alt="Ultra Wash Logo"
               width={120}
               height={50}
@@ -133,9 +152,16 @@ const OtpPage = () => {
             </h1>
             <p className="text-xs sm:text-sm text-[#5a6a7a] leading-relaxed">
               Please enter Your OTP<br />
-              One OTP Will send By your Email
+              OTP sent to {emailOrPhone || 'your email/phone'}
             </p>
           </div>
+
+          {/* API Error Display */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm animate-fade-in mb-4">
+              {error}
+            </div>
+          )}
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
@@ -153,7 +179,7 @@ const OtpPage = () => {
                     onChange={(e) => handleChange(index, e.target.value)}
                     onKeyDown={(e) => handleKeyDown(index, e)}
                     className={`w-10 h-12 sm:w-12 sm:h-14 md:w-14 md:h-16 text-center text-lg sm:text-xl md:text-2xl font-bold border-2 rounded-lg sm:rounded-xl text-[#0f2744] focus:outline-none transition-all duration-300 ${
-                      error
+                      (error || validationError)
                         ? 'border-red-500 focus:border-red-500 animate-shake'
                         : digit
                         ? 'border-[#0F7BA0] bg-[#0F7BA0]/5'
@@ -162,8 +188,8 @@ const OtpPage = () => {
                   />
                 ))}
               </div>
-              {error && (
-                <p className="text-red-500 text-xs sm:text-sm text-center animate-fade-in">{error}</p>
+              {validationError && (
+                <p className="text-red-500 text-xs sm:text-sm text-center animate-fade-in">{validationError}</p>
               )}
             </div>
 

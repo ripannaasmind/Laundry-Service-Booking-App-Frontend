@@ -1,49 +1,63 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FiMail } from 'react-icons/fi';
+import { usePasswordResetStore } from '@/store/passwordResetStore';
 
 const ForgotPasswordPage = () => {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [emailOrPhone, setEmailOrPhone] = useState('');
+  const [validationError, setValidationError] = useState('');
   const [touched, setTouched] = useState(false);
 
-  const validateEmail = (email: string) => {
+  const { forgotPassword, isLoading, error, clearError, setEmailOrPhone: storeEmailOrPhone } = usePasswordResetStore();
+
+  // Clear any previous errors when component mounts
+  useEffect(() => {
+    clearError();
+  }, [clearError]);
+
+  const validateEmailOrPhone = (value: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!email) return 'Email is required';
-    if (!emailRegex.test(email)) return 'Please enter a valid email address';
+    const phoneRegex = /^[0-9]{10,15}$/;
+    if (!value) return 'Email or phone is required';
+    if (!emailRegex.test(value) && !phoneRegex.test(value)) {
+      return 'Please enter a valid email or phone number';
+    }
     return '';
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setEmail(e.target.value);
+    setEmailOrPhone(e.target.value);
     if (touched) {
-      setError(validateEmail(e.target.value));
+      setValidationError(validateEmailOrPhone(e.target.value));
     }
   };
 
   const handleBlur = () => {
     setTouched(true);
-    setError(validateEmail(email));
+    setValidationError(validateEmailOrPhone(emailOrPhone));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const emailError = validateEmail(email);
-    setError(emailError);
+    const emailPhoneError = validateEmailOrPhone(emailOrPhone);
+    setValidationError(emailPhoneError);
     setTouched(true);
 
-    if (!emailError) {
-      setIsLoading(true);
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      setIsLoading(false);
-      router.push('/otp');
+    if (!emailPhoneError) {
+      console.log('Sending forgot password request for:', emailOrPhone);
+      const success = await forgotPassword(emailOrPhone);
+      
+      if (success) {
+        console.log('OTP sent successfully, navigating to /otp');
+        storeEmailOrPhone(emailOrPhone);
+        router.push('/otp');
+      }
     }
   };
 
@@ -69,7 +83,7 @@ const ForgotPasswordPage = () => {
           {/* Logo */}
           <div className="flex justify-center mb-6 sm:mb-8">
             <Image
-              src="/Images/logo-2.png"
+              src="/Images/logo/header.png"
               alt="Ultra Wash Logo"
               width={120}
               height={50}
@@ -83,37 +97,44 @@ const ForgotPasswordPage = () => {
               Forgot Password
             </h1>
             <p className="text-xs sm:text-sm text-[#5a6a7a] leading-relaxed">
-              Please enter Your Email<br />
-              One OTP Will send to your Email
+              Please enter Your Email or Phone<br />
+              One OTP Will send to your Email or Phone
             </p>
           </div>
 
+          {/* API Error Display */}
+          {error && (
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm animate-fade-in">
+              {error}
+            </div>
+          )}
+
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
-            {/* Email Input */}
+            {/* Email/Phone Input */}
             <div className="space-y-1.5">
               <label className="block text-xs sm:text-sm font-medium text-[#0f2744]">
-                Your Registered Email
+                Your Registered Email or Phone
               </label>
-              <div className={`relative transition-all duration-300 ${error && touched ? 'animate-shake' : ''}`}>
+              <div className={`relative transition-all duration-300 ${validationError && touched ? 'animate-shake' : ''}`}>
                 <div className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400">
                   <FiMail className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <input
-                  type="email"
-                  value={email}
+                  type="text"
+                  value={emailOrPhone}
                   onChange={handleChange}
                   onBlur={handleBlur}
-                  placeholder="ex: name@yourprs.com"
+                  placeholder="ex: name@yourprs.com or 1234567890"
                   className={`w-full pl-10 sm:pl-12 pr-4 py-3 sm:py-3.5 border rounded-lg sm:rounded-xl text-sm sm:text-base text-[#0f2744] placeholder-gray-400 focus:outline-none transition-all duration-300 ${
-                    error && touched
+                    validationError && touched
                       ? 'border-red-500 focus:border-red-500 focus:ring-2 focus:ring-red-200'
                       : 'border-gray-200 focus:border-[#0F7BA0] focus:ring-2 focus:ring-[#0F7BA0]/20'
                   }`}
                 />
               </div>
-              {error && touched && (
-                <p className="text-red-500 text-xs sm:text-sm pl-1 animate-fade-in">{error}</p>
+              {validationError && touched && (
+                <p className="text-red-500 text-xs sm:text-sm pl-1 animate-fade-in">{validationError}</p>
               )}
             </div>
 

@@ -1,13 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { FiUser, FiPhone, FiMail, FiLock, FiEye, FiEyeOff } from 'react-icons/fi';
+import { useAuthStore } from '@/store/authStore';
 
 const SignupPage = () => {
   const router = useRouter();
+  const { register, error: authError, isLoading: authLoading, isAuthenticated, user } = useAuthStore();
+  
   const [formData, setFormData] = useState({
     fullName: '',
     phone: '',
@@ -32,6 +35,13 @@ const SignupPage = () => {
     password: false,
     confirmPassword: false,
   });
+
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (isAuthenticated || user) {
+      router.push('/');
+    }
+  }, [user, isAuthenticated, router]);
 
   const validateFullName = (name: string) => {
     if (!name) return 'Full name is required';
@@ -129,9 +139,21 @@ const SignupPage = () => {
     
     if (!hasErrors) {
       setIsLoading(true);
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      setIsLoading(false);
-      router.push('/otp');
+      try {
+        await register({
+          name: formData.fullName,
+          email: formData.email,
+          phone: formData.phone,
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+        });
+        router.push('/');
+      } catch (error: any) {
+        console.error('Registration error:', error);
+        // Error is already set in the store
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -169,7 +191,7 @@ const SignupPage = () => {
           {/* Logo */}
           <div className="flex justify-center mb-5 sm:mb-6">
             <Image
-              src="/Images/logo-2.png"
+              src="/Images/logo/header.png"
               alt="Ultra Wash Logo"
               width={120}
               height={50}
@@ -362,10 +384,10 @@ const SignupPage = () => {
             {/* Create Account Button */}
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || authLoading}
               className="w-full bg-[#0F7BA0] text-white py-3 sm:py-3.5 rounded-lg sm:rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 hover:bg-[#0d6a8a] hover:shadow-lg disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2"
             >
-              {isLoading ? (
+              {isLoading || authLoading ? (
                 <>
                   <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -377,6 +399,13 @@ const SignupPage = () => {
                 'Create Account'
               )}
             </button>
+
+            {/* Error Message */}
+            {authError && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm animate-fade-in">
+                {authError}
+              </div>
+            )}
 
             {/* Divider */}
             <div className="flex items-center gap-3 sm:gap-4 my-3 sm:my-4">
