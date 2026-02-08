@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/authStore';
 import { FiUser, FiPhone, FiMail, FiMapPin, FiCalendar, FiClock } from 'react-icons/fi';
 
 interface OrderItem {
@@ -15,7 +16,7 @@ interface OrderData {
   cartGroups: {
     serviceType: string;
     items: {
-      id: number;
+      id: string | number;
       name: string;
       price: number;
       quantity: number;
@@ -29,6 +30,16 @@ interface OrderData {
 
 const CheckoutPage = () => {
   const router = useRouter();
+  const { isAuthenticated, checkAuth } = useAuthStore();
+  
+  // Check authentication
+  useEffect(() => {
+    checkAuth();
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      router.push('/login');
+    }
+  }, [checkAuth, router]);
   
   // Initialize order data from localStorage
   const initializeOrderData = (): OrderData | null => {

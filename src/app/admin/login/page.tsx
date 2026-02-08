@@ -2,7 +2,9 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { FiMail, FiLock, FiEye, FiEyeOff, FiShield } from 'react-icons/fi';
+import { useRouter } from 'next/navigation';
+import { FiMail, FiLock, FiEye, FiEyeOff, FiShield, FiAlertCircle } from 'react-icons/fi';
+import { useAuthStore } from '@/store/authStore';
 
 const AdminLoginPage = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -10,16 +12,42 @@ const AdminLoginPage = () => {
   const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState('');
+  const router = useRouter();
+  const { login } = useAuthStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    setError('');
     
-    // Simulate login
-    setTimeout(() => {
+    try {
+      // Use authStore login which calls POST /auth/login
+      await login(email, password);
+      
+      // Check if user is admin
+      const userStr = localStorage.getItem('auth_user');
+      if (userStr) {
+        const user = JSON.parse(userStr);
+        if (user.role !== 'admin') {
+          // Not an admin - clear auth and show error
+          localStorage.removeItem('auth_token');
+          localStorage.removeItem('auth_user');
+          useAuthStore.getState().logout();
+          setError('Access denied. You do not have admin privileges.');
+          setIsLoading(false);
+          return;
+        }
+      }
+      
+      // Success - redirect to admin dashboard
+      router.push('/admin');
+    } catch (err: unknown) {
+      const errorMsg = (err as Error)?.message || 'Login failed. Please check your credentials.';
+      setError(errorMsg);
+    } finally {
       setIsLoading(false);
-      window.location.href = '/admin';
-    }, 1500);
+    }
   };
 
   return (
@@ -110,6 +138,13 @@ const AdminLoginPage = () => {
 
           {/* Login Form */}
           <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Error Message */}
+            {error && (
+              <div className="flex items-center gap-3 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl">
+                <FiAlertCircle className="w-5 h-5 text-red-500 shrink-0" />
+                <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
+              </div>
+            )}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Email Address
@@ -121,7 +156,7 @@ const AdminLoginPage = () => {
                   id="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@laundryhub.com"
+                  placeholder="admin@ultrawash.com"
                   className="w-full pl-12 pr-4 py-3.5 border border-gray-200 dark:border-gray-700 rounded-xl bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-[#0F7BA0] focus:border-transparent outline-none transition-all"
                   required
                 />
@@ -217,9 +252,9 @@ const AdminLoginPage = () => {
 
           {/* Demo Credentials */}
           <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-xl">
-            <p className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">Demo Credentials:</p>
-            <p className="text-sm text-blue-600 dark:text-blue-400">Email: admin@laundryhub.com</p>
-            <p className="text-sm text-blue-600 dark:text-blue-400">Password: admin123</p>
+            <p className="text-sm font-medium text-blue-800 dark:text-blue-300 mb-2">Admin Credentials:</p>
+            <p className="text-sm text-blue-600 dark:text-blue-400">Email: admin@ultrawash.com</p>
+            <p className="text-sm text-blue-600 dark:text-blue-400">Password: Admin@123</p>
           </div>
         </div>
       </div>

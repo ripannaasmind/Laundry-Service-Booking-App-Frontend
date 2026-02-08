@@ -1,166 +1,90 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
-import { FiX } from 'react-icons/fi';
+import api from '@/services/api';
+import { FiX, FiDownload, FiRefreshCw, FiLoader } from 'react-icons/fi';
 
 // Order types
-type OrderStatus = 'all' | 'completed' | 'ongoing' | 'cancelled';
+type OrderFilter = 'all' | 'completed' | 'ongoing' | 'cancelled';
 
 interface Order {
-  id: string;
+  _id: string;
   orderId: string;
-  items: string;
+  itemsSummary: string;
   itemCount: number;
   orderDate: string;
   deliveryDate: string;
   discount: number;
   totalPayment: number;
-  status: 'ongoing' | 'completed' | 'cancelled';
+  status: string;
 }
 
-// Sample orders data
-const ordersData: Order[] = [
-  {
-    id: '1',
-    orderId: '#LHONVFD86',
-    items: '2 Wash & Fold, 8 Wash & Press, and 2 Dry Cleaning',
-    itemCount: 12,
-    orderDate: '12 Dec 2025',
-    deliveryDate: '18 Dec 2025',
-    discount: 0,
-    totalPayment: 80.00,
-    status: 'ongoing',
-  },
-  {
-    id: '2',
-    orderId: '#LHONVFD87',
-    items: '13 Wash & Fold and 5 Dry Cleaning',
-    itemCount: 18,
-    orderDate: '12 Oct 2025',
-    deliveryDate: '18 Oct 2025',
-    discount: 0,
-    totalPayment: 100.00,
-    status: 'ongoing',
-  },
-  {
-    id: '3',
-    orderId: '#LHONVFD88',
-    items: '3 Press, and 2 Dry Cleaning',
-    itemCount: 5,
-    orderDate: '1 Dec 2025',
-    deliveryDate: '29 Dec 2025',
-    discount: 0,
-    totalPayment: 80.00,
-    status: 'ongoing',
-  },
-  {
-    id: '4',
-    orderId: '#LHONVFD89',
-    items: '1 Wash & Fold, 2 Press, and 2 Dry Cleaning',
-    itemCount: 5,
-    orderDate: '15 Dec 2025',
-    deliveryDate: '20 Dec 2025',
-    discount: 0,
-    totalPayment: 80.00,
-    status: 'completed',
-  },
-  {
-    id: '5',
-    orderId: '#LHONVFD90',
-    items: '5 Wash & Fold, 5 Wash & Press',
-    itemCount: 10,
-    orderDate: '12 Nov 2025',
-    deliveryDate: '18 Nov 2025',
-    discount: 5.00,
-    totalPayment: 75.00,
-    status: 'completed',
-  },
-  {
-    id: '6',
-    orderId: '#LHONVFD91',
-    items: '8 Dry Cleaning',
-    itemCount: 8,
-    orderDate: '12 Dec 2025',
-    deliveryDate: '18 Dec 2025',
-    discount: 0,
-    totalPayment: 80.00,
-    status: 'cancelled',
-  },
-  {
-    id: '7',
-    orderId: '#LHONVFD92',
-    items: '2 Wash & Fold and 3 Dry Cleaning',
-    itemCount: 5,
-    orderDate: '12 Oct 2025',
-    deliveryDate: '18 Oct 2025',
-    discount: 0,
-    totalPayment: 100.00,
-    status: 'cancelled',
-  },
-  {
-    id: '8',
-    orderId: '#LHONVFD93',
-    items: '15 Press, and 5 Dry Cleaning',
-    itemCount: 20,
-    orderDate: '1 Dec 2025',
-    deliveryDate: '29 Dec 2025',
-    discount: 5.00,
-    totalPayment: 120.00,
-    status: 'cancelled',
-  },
-];
-
 const OrdersPage = () => {
-  const [activeTab, setActiveTab] = useState<OrderStatus>('all');
+  const [activeTab, setActiveTab] = useState<OrderFilter>('all');
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [modalTop, setModalTop] = useState(0);
   const orderRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  const tabs: { id: OrderStatus; label: string }[] = [
+  const tabs: { id: OrderFilter; label: string }[] = [
     { id: 'all', label: 'All' },
     { id: 'completed', label: 'Completed' },
     { id: 'ongoing', label: 'Ongoing' },
     { id: 'cancelled', label: 'Cancelled' },
   ];
 
-  const filteredOrders = activeTab === 'all' 
-    ? ordersData 
-    : ordersData.filter(order => order.status === activeTab);
-
-  const getStatusColor = (status: Order['status']) => {
-    switch (status) {
-      case 'ongoing':
-        return 'bg-[#0F7BA0] text-white';
-      case 'completed':
-        return 'bg-green-500 text-white';
-      case 'cancelled':
-        return 'bg-red-500 text-white';
-      default:
-        return 'bg-gray-500 text-white';
+  const fetchOrders = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/orders/my-orders', { params: { status: activeTab } });
+      if (res.data.status === 'success') {
+        setOrders(res.data.data);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setLoading(false);
     }
+  }, [activeTab]);
+
+  useEffect(() => {
+    fetchOrders();
+  }, [fetchOrders]);
+
+  const getStatusColor = (status: string) => {
+    if (['confirmed', 'picked_up', 'in_process', 'ready', 'out_for_delivery'].includes(status))
+      return 'bg-[#0F7BA0] text-white';
+    if (status === 'delivered') return 'bg-green-500 text-white';
+    if (status === 'cancelled') return 'bg-red-500 text-white';
+    return 'bg-gray-500 text-white';
   };
+
+  const formatStatus = (status: string) => status.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' });
+  const isOngoing = (status: string) => !['delivered', 'cancelled'].includes(status);
 
   const handleCancelOrder = (orderId: string) => {
     const orderElement = orderRefs.current[orderId];
     if (orderElement) {
       const rect = orderElement.getBoundingClientRect();
       const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-      // Position modal at the top of the order card
       setModalTop(rect.top + scrollTop);
     }
     setSelectedOrderId(orderId);
     setShowCancelModal(true);
   };
 
-  const confirmCancelOrder = () => {
+  const confirmCancelOrder = async () => {
     if (selectedOrderId) {
-      // Find the order and update its status
-      const orderIndex = ordersData.findIndex(o => o.id === selectedOrderId);
-      if (orderIndex !== -1) {
-        ordersData[orderIndex].status = 'cancelled';
+      try {
+        await api.put(`/orders/${selectedOrderId}/cancel`);
+        fetchOrders();
+      } catch {
+        // silently fail
       }
     }
     setShowCancelModal(false);
@@ -169,14 +93,14 @@ const OrdersPage = () => {
 
   return (
     <DashboardLayout>
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
         {/* Header */}
-        <div className="p-4 sm:p-6 border-b border-gray-100 bg-gradient-to-r from-gray-50 to-white">
-          <h1 className="text-xl sm:text-2xl font-bold text-[#0F2744]">My Order</h1>
+        <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
+          <h1 className="text-lg font-semibold text-[#0F2744] dark:text-white border-b-2 border-[#0F7BA0] pb-2 inline-block">My Orders</h1>
         </div>
 
         {/* Tabs */}
-        <div className="p-4 sm:p-6 border-b border-gray-100">
+        <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
           <div className="flex flex-wrap gap-2">
             {tabs.map((tab) => (
               <button
@@ -184,8 +108,8 @@ const OrdersPage = () => {
                 onClick={() => setActiveTab(tab.id)}
                 className={`px-4 sm:px-6 py-2 sm:py-2.5 rounded-lg font-medium text-sm sm:text-base transition-all duration-200 ${
                   activeTab === tab.id
-                    ? 'bg-[#0F2744] text-white shadow-md'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-[#0F2744] dark:bg-[#0F7BA0] text-white shadow-md'
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
                 {tab.label}
@@ -196,69 +120,90 @@ const OrdersPage = () => {
 
         {/* Orders List */}
         <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
-          {filteredOrders.length === 0 ? (
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <FiLoader className="w-8 h-8 text-[#0F7BA0] animate-spin" />
+            </div>
+          ) : orders.length === 0 ? (
             <div className="text-center py-12">
-              <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 rounded-full flex items-center justify-center">
-                <FiX className="w-10 h-10 text-gray-400" />
+              <div className="w-20 h-20 mx-auto mb-4 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center">
+                <FiX className="w-10 h-10 text-gray-400 dark:text-gray-500" />
               </div>
-              <h3 className="text-lg font-semibold text-gray-700 mb-2">No orders found</h3>
-              <p className="text-gray-500">You don&apos;t have any {activeTab !== 'all' ? activeTab : ''} orders yet.</p>
+              <h3 className="text-lg font-semibold text-gray-700 dark:text-gray-300 mb-2">No orders found</h3>
+              <p className="text-gray-500 dark:text-gray-400">You don&apos;t have any {activeTab !== 'all' ? activeTab : ''} orders yet.</p>
             </div>
           ) : (
-            filteredOrders.map((order, index) => (
+            orders.map((order, index) => (
               <div
-                key={order.id}
-                ref={(el) => { orderRefs.current[order.id] = el; }}
-                className="border border-gray-200 rounded-xl p-4 sm:p-6 hover:border-[#0F7BA0]/30 hover:shadow-md transition-all duration-300 animate-fade-in-up"
+                key={order._id}
+                ref={(el) => { orderRefs.current[order._id] = el; }}
+                className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 sm:p-6 hover:border-[#0F7BA0]/30 hover:shadow-md transition-all duration-300 animate-fade-in-up"
                 style={{ animationDelay: `${index * 50}ms` }}
               >
                 {/* Order Header */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
                   <span className={`inline-flex px-3 py-1 rounded-md text-xs sm:text-sm font-semibold capitalize w-fit ${getStatusColor(order.status)}`}>
-                    {order.status}
+                    {formatStatus(order.status)}
                   </span>
-                  <span className="text-sm text-gray-500">
-                    Order ID: <span className="font-semibold text-[#0F2744]">{order.orderId}</span>
+                  <span className="text-sm text-gray-500 dark:text-gray-400">
+                    Order ID: <span className="font-semibold text-[#0F2744] dark:text-white">{order.orderId}</span>
                   </span>
                 </div>
 
                 {/* Order Details */}
-                <h3 className="text-base sm:text-lg font-bold text-[#0F2744] mb-4">
-                  {order.itemCount} items have been ordered : {order.items}
+                <h3 className="text-base sm:text-lg font-bold text-[#0F2744] dark:text-white mb-4">
+                  {order.itemCount} items have been ordered : {order.itemsSummary}
                 </h3>
 
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
                   <div>
-                    <p className="text-xs sm:text-sm text-gray-500">Order Date</p>
-                    <p className="text-sm sm:text-base font-semibold text-[#0F2744]">{order.orderDate}</p>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Order Date</p>
+                    <p className="text-sm sm:text-base font-semibold text-[#0F2744] dark:text-white">{formatDate(order.orderDate)}</p>
                   </div>
                   <div className="text-right lg:text-left">
-                    <p className="text-xs sm:text-sm text-gray-500">Approximate Delivery Date</p>
-                    <p className="text-sm sm:text-base font-semibold text-[#0F2744]">{order.deliveryDate}</p>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Approximate Delivery Date</p>
+                    <p className="text-sm sm:text-base font-semibold text-[#0F2744] dark:text-white">{formatDate(order.deliveryDate)}</p>
                   </div>
                   <div>
-                    <p className="text-xs sm:text-sm text-gray-500">Discount</p>
-                    <p className="text-sm sm:text-base font-semibold text-[#0F2744]">$ {order.discount.toFixed(2)}</p>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Discount</p>
+                    <p className="text-sm sm:text-base font-semibold text-[#0F2744] dark:text-white">$ {order.discount.toFixed(2)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs sm:text-sm text-gray-500">Total Payment</p>
-                    <p className="text-sm sm:text-base font-semibold text-[#0F2744]">$ {order.totalPayment.toFixed(2)}</p>
+                    <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400">Total Payment</p>
+                    <p className="text-sm sm:text-base font-semibold text-[#0F2744] dark:text-white">$ {order.totalPayment.toFixed(2)}</p>
                   </div>
                 </div>
 
                 {/* Actions */}
-                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-100">
-                  {order.status === 'ongoing' && (
+                <div className="flex flex-col sm:flex-row gap-3 pt-4 border-t border-gray-100 dark:border-gray-700">
+                  {isOngoing(order.status) && (
                     <button
-                      onClick={() => handleCancelOrder(order.id)}
-                      className="flex-1 sm:flex-none px-6 py-2.5 border-2 border-gray-300 text-gray-600 rounded-lg font-medium hover:border-red-500 hover:text-red-500 transition-colors text-sm sm:text-base"
+                      onClick={() => handleCancelOrder(order._id)}
+                      className="flex-1 sm:flex-none px-5 py-2.5 border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-lg font-medium hover:border-red-500 hover:text-red-500 transition-colors text-sm"
                     >
                       Cancel
                     </button>
                   )}
+                  {order.status === 'delivered' && (
+                    <>
+                      <button
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-lg font-medium hover:border-[#0F7BA0] hover:text-[#0F7BA0] transition-colors text-sm"
+                      >
+                        <FiDownload className="w-4 h-4" />
+                        Invoice
+                      </button>
+                      <Link
+                        href="/services"
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-5 py-2.5 border-2 border-[#0F7BA0] text-[#0F7BA0] rounded-lg font-medium hover:bg-[#0F7BA0] hover:text-white transition-colors text-sm"
+                      >
+                        <FiRefreshCw className="w-4 h-4" />
+                        Re-order
+                      </Link>
+                    </>
+                  )}
                   <Link
-                    href={`/dashboard/orders/${order.id}`}
-                    className="flex-1 sm:flex-none px-6 py-2.5 bg-[#0F2744] text-white rounded-lg font-medium hover:bg-[#1a3a5c] transition-colors text-center text-sm sm:text-base"
+                    href={`/dashboard/orders/${order._id}`}
+                    className="flex-1 sm:flex-none px-5 py-2.5 bg-[#0F2744] dark:bg-[#0F7BA0] text-white rounded-lg font-medium hover:bg-[#1a3a5c] dark:hover:bg-[#0d6a8a] transition-colors text-center text-sm"
                   >
                     Track Order
                   </Link>
@@ -273,27 +218,27 @@ const OrdersPage = () => {
       {showCancelModal && (
         <>
           <div 
-            className="fixed inset-0 z-[9998] animate-fade-in"
+            className="fixed inset-0 z-9998 animate-fade-in"
             onClick={() => setShowCancelModal(false)}
           />
           <div 
-            className="fixed left-1/2 -translate-x-1/2 z-[9999] animate-scale-in"
+            className="fixed left-1/2 -translate-x-1/2 z-9999 animate-scale-in"
             style={{ top: `${modalTop}px` }}
           >
-            <div className="bg-white rounded-2xl p-6 sm:p-8 w-[90vw] sm:w-96 shadow-2xl">
+            <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 sm:p-8 w-[90vw] sm:w-96 shadow-2xl">
               <div className="text-center">
-                <div className="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+                <div className="w-16 h-16 mx-auto mb-4 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
                   <svg className="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                   </svg>
                 </div>
-                <h3 className="text-lg font-semibold text-gray-800 mb-6">
+                <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-6">
                   Do you want to cancel this order?
                 </h3>
                 <div className="flex gap-3">
                   <button
                     onClick={() => setShowCancelModal(false)}
-                    className="flex-1 px-6 py-2.5 border-2 border-gray-300 text-gray-600 rounded-lg font-medium hover:bg-gray-50 transition-colors"
+                    className="flex-1 px-6 py-2.5 border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                   >
                     No
                   </button>

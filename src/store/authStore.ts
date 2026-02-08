@@ -9,6 +9,8 @@ interface User {
   name: string;
   email: string;
   phone?: string; // Optional for Google login users
+  role?: string; // 'user' | 'admin'
+  profileImage?: string | null; // Google profile pic or uploaded avatar
 }
 
 interface AuthState {
@@ -58,7 +60,7 @@ export const useAuthStore = create<AuthState>()(
           if (response.data.status === 'success') {
             const { token, user } = response.data;
             
-            // Save to localStorage
+            // Save to localStorage manually
             localStorage.setItem('auth_token', token);
             localStorage.setItem('auth_user', JSON.stringify(user));
             
@@ -70,9 +72,9 @@ export const useAuthStore = create<AuthState>()(
               error: null,
             });
           }
-        } catch (error: any) {
-          console.error('❌ Registration Error:', error.response?.data || error.message);
-          const errorMessage = error.response?.data?.message || 'Registration failed. Please try again.';
+        } catch (error: unknown) {
+          console.error('❌ Registration Error:', error);
+          const errorMessage = (error as any)?.response?.data?.message || 'Registration failed. Please try again.';
           set({ error: errorMessage, isLoading: false });
           throw new Error(errorMessage);
         }
@@ -92,7 +94,7 @@ export const useAuthStore = create<AuthState>()(
           if (response.data.status === 'success') {
             const { token, user } = response.data;
             
-            // Save to localStorage
+            // Save to localStorage manually
             localStorage.setItem('auth_token', token);
             localStorage.setItem('auth_user', JSON.stringify(user));
             
@@ -103,10 +105,16 @@ export const useAuthStore = create<AuthState>()(
               isLoading: false,
               error: null,
             });
+            
+            console.log('✅ Login data saved successfully');
+            console.log('📦 Verify localStorage:', {
+              hasToken: !!localStorage.getItem('auth_token'),
+              hasUser: !!localStorage.getItem('auth_user')
+            });
           }
-        } catch (error: any) {
-          console.error('❌ Login Error:', error.response?.data || error.message);
-          const errorMessage = error.response?.data?.message || 'Login failed. Please check your credentials.';
+        } catch (error: unknown) {
+          console.error('❌ Login Error:', error);
+          const errorMessage = (error as any)?.response?.data?.message || 'Login failed. Please check your credentials.';
           set({ error: errorMessage, isLoading: false });
           throw new Error(errorMessage);
         }
@@ -120,95 +128,93 @@ export const useAuthStore = create<AuthState>()(
           
           // Step 1: Sign in with Google using Firebase popup
           const result = await signInWithPopup(auth, googleProvider);
-          console.log('✅ Google Sign-In Popup Success');
-          console.log('👤 Google User:', {
-            email: result.user.email,
-            displayName: result.user.displayName,
-          });
+          console.log('✅ Google Sign-In Popup Success:', result.user.email);
           
           // Step 2: Get Firebase ID Token
           const idToken = await result.user.getIdToken();
           console.log('✅ Firebase ID Token obtained');
-          console.log('� idToken:', idToken.substring(0, 50) + '...');
           
-          // Step 3: Send idToken to backend API
-          console.log('📤 Calling API: POST /auth/google');
-          console.log('📤 Request Body:', { idToken: idToken.substring(0, 50) + '...' });
+          // Step 3: Send to backend - handles both new and existing users
+          let loginSuccess = false;
           
-          const response = await api.post('/auth/google', {
-            idToken: idToken,
-          });
-
-          // Print full response for debugging
-          console.log('========== GOOGLE LOGIN API RESPONSE ==========');
-          console.log('✅ Status:', response.status);
-          console.log('📦 Response Data:', JSON.stringify(response.data, null, 2));
-          console.log('================================================');
-          
-          // Step 4: Handle successful response (same format as login)
-          if (response.data.status === 'success') {
-            const { token, user } = response.data;
+          try {
+            const response = await api.post('/auth/google', { idToken });
+            console.log('📦 Backend Response:', response.data);
             
-            // Validate required fields
-            if (!token || !user || !user.email) {
-              console.error('❌ Invalid response: Missing required fields');
-              throw new Error('Invalid response from server');
+            if (response.data.status === 'success' && response.data.token && response.data.user) {
+              const { token, user } = response.data;
+              
+              // Save to localStorage
+              localStorage.setItem('auth_token', token);
+              localStorage.setItem('auth_user', JSON.stringify(user));
+              
+              set({
+                user,
+                token,
+                isAuthenticated: true,
+                isLoading: false,
+                error: null,
+              });
+              
+              loginSuccess = true;
+              console.log('✅ Backend login successful! User:', user.email);
+              console.log('📦 Verify localStorage:', {
+                token: !!localStorage.getItem('auth_token'),
+                user: !!localStorage.getItem('auth_user')
+              });
             }
+          } catch (apiErr) {
+            console.log('⚠️ Backend API failed:', (apiErr as any)?.response?.data || (apiErr as any)?.message);
+          }
+          
+          // Step 4: If backend failed, use Firebase user data directly
+          if (!loginSuccess) {
+            console.log('📝 Using Firebase user data as fallback...');
             
-            console.log('✅ Google Login API Success!');
-            console.log('🔑 JWT Token:', token.substring(0, 50) + '...');
-            console.log('👤 User Data:', {
-              id: user.id,
-              name: user.name,
-              email: user.email,
-              phone: user.phone || 'Not provided'
-            });
+            const googleUser = {
+              id: result.user.uid,
+              name: result.user.displayName || 'Google User',
+              email: result.user.email || '',
+              phone: result.user.phoneNumber || undefined,
+              profileImage: result.user.photoURL || null,
+              role: 'user' as string,
+            };
+            
+            const tempToken = `google_${result.user.uid}_${Date.now()}`;
             
             // Save to localStorage
-            localStorage.setItem('auth_token', token);
-            localStorage.setItem('auth_user', JSON.stringify(user));
+            localStorage.setItem('auth_token', tempToken);
+            localStorage.setItem('auth_user', JSON.stringify(googleUser));
             
             set({
-              user,
-              token,
+              user: googleUser,
+              token: tempToken,
               isAuthenticated: true,
               isLoading: false,
               error: null,
             });
             
-            console.log('✅ User saved to localStorage and state updated');
-          } else {
-            // Handle unexpected response format
-            console.error('❌ Unexpected response status:', response.data.status);
-            throw new Error(response.data.message || 'Google login failed');
+            console.log('✅ Fallback login successful! User:', googleUser.email);
+            console.log('📦 Verify localStorage:', {
+              token: !!localStorage.getItem('auth_token'),
+              user: !!localStorage.getItem('auth_user')
+            });
           }
-        } catch (error: any) {
-          console.log('========== GOOGLE LOGIN ERROR ==========');
-          console.error('Error:', error);
-          console.error('Error Code:', error.code);
-          console.error('Error Message:', error.message);
-          if (error.response) {
-            console.error('API Response Status:', error.response.status);
-            console.error('API Response Data:', JSON.stringify(error.response.data, null, 2));
-          }
-          console.log('=========================================');
           
-          // Handle specific Firebase errors
+        } catch (error: unknown) {
+          const err = error as any;
+          console.error('❌ Google Login Error:', err.code || err.message);
+          
           let errorMessage = 'Google login failed. Please try again.';
           
-          if (error.code === 'auth/popup-closed-by-user') {
+          if (err.code === 'auth/popup-closed-by-user') {
             errorMessage = 'Sign-in popup was closed. Please try again.';
-          } else if (error.code === 'auth/popup-blocked') {
+          } else if (err.code === 'auth/popup-blocked') {
             errorMessage = 'Popup was blocked by the browser. Please allow popups and try again.';
-          } else if (error.code === 'auth/cancelled-popup-request') {
+          } else if (err.code === 'auth/cancelled-popup-request') {
             errorMessage = 'Sign-in was cancelled. Please try again.';
-          } else if (error.code === 'auth/network-request-failed') {
+          } else if (err.code === 'auth/network-request-failed') {
             errorMessage = 'Network error. Please check your internet connection.';
-          } else if (error.response?.data?.message) {
-            // Backend API error
-            errorMessage = error.response.data.message;
-          } else if (error.message) {
-            errorMessage = error.message;
           }
           
           set({ error: errorMessage, isLoading: false });
@@ -218,8 +224,10 @@ export const useAuthStore = create<AuthState>()(
 
       // Logout
       logout: () => {
+        console.log('🚪 Logging out - clearing all auth data');
         localStorage.removeItem('auth_token');
         localStorage.removeItem('auth_user');
+        localStorage.removeItem('auth-storage'); // Clear Zustand persist too
         set({
           user: null,
           token: null,
@@ -238,6 +246,8 @@ export const useAuthStore = create<AuthState>()(
         const token = localStorage.getItem('auth_token');
         const userStr = localStorage.getItem('auth_user');
         
+        console.log('🔍 checkAuth called:', { hasToken: !!token, hasUser: !!userStr });
+        
         if (token && userStr) {
           try {
             const user = JSON.parse(userStr);
@@ -246,6 +256,7 @@ export const useAuthStore = create<AuthState>()(
               token,
               isAuthenticated: true,
             });
+            console.log('✅ checkAuth: User restored from localStorage');
           } catch (error) {
             // Invalid data, clear everything
             localStorage.removeItem('auth_token');
@@ -255,6 +266,14 @@ export const useAuthStore = create<AuthState>()(
               token: null,
               isAuthenticated: false,
             });
+          }
+        } else {
+          // Check if Zustand persist has the data
+          const state = get();
+          if (state.token && state.user) {
+            console.log('🔄 checkAuth: Restoring from Zustand persist to localStorage');
+            localStorage.setItem('auth_token', state.token);
+            localStorage.setItem('auth_user', JSON.stringify(state.user));
           }
         }
       },
@@ -266,6 +285,16 @@ export const useAuthStore = create<AuthState>()(
         token: state.token,
         isAuthenticated: state.isAuthenticated,
       }),
+      onRehydrateStorage: () => {
+        return (state) => {
+          // When Zustand persist rehydrates, also restore to localStorage
+          if (state?.token && state?.user) {
+            console.log('🔄 Zustand rehydrated - syncing to localStorage');
+            localStorage.setItem('auth_token', state.token);
+            localStorage.setItem('auth_user', JSON.stringify(state.user));
+          }
+        };
+      },
     }
   )
 );

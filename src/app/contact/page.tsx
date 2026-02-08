@@ -390,7 +390,7 @@ const ContactPage = () => {
         </section>
 
         {/* FAQ Quick Links */}
-        <section className="py-12 sm:py-16 bg-gradient-to-br from-[#0F2744] via-[#1a3a5c] to-[#0F2744] text-white">
+        <section className="py-12 sm:py-16 bg-linear-to-br from-[#0F2744] via-[#1a3a5c] to-[#0F2744] text-white">
           <div className="container-custom px-4 sm:px-6 lg:px-8 text-center">
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 animate-fade-in">
               Need Quick Answers?

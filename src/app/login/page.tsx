@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -10,7 +10,7 @@ import { useAuthStore } from '@/store/authStore';
 
 const LoginPage = () => {
   const router = useRouter();
-  const { user, login, googleLogin, error: authError, isAuthenticated } = useAuthStore();
+  const { login, googleLogin, error: authError } = useAuthStore();
   
   const [formData, setFormData] = useState({
     emailOrPhone: '',
@@ -28,24 +28,45 @@ const LoginPage = () => {
     password: false,
   });
 
-  // Redirect if user is already logged in
-  useEffect(() => {
-    if (isAuthenticated || user) {
-      router.push('/');
-    }
-  }, [user, isAuthenticated, router]);
-
   // Handle Google Sign In - Works same as regular login
   const onGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     try {
+      console.log('🔵 Starting Google login...');
       await googleLogin();
-      // After successful login, redirect to home
-      router.push('/');
-    } catch (error: any) {
-      // Error is already shown by authError state from the store
-      console.error('Google sign in failed:', error.message);
-    } finally {
+      
+      console.log('✅ Google login successful, checking localStorage...');
+      
+      // Check immediately if data was saved
+      const token = localStorage.getItem('auth_token');
+      const userStr = localStorage.getItem('auth_user');
+      
+      console.log('📦 LocalStorage after login:', {
+        hasToken: !!token,
+        hasUser: !!userStr,
+        tokenPreview: token ? token.substring(0, 30) + '...' : 'NONE'
+      });
+      
+      if (!token || !userStr) {
+        console.error('❌ localStorage is empty after login!');
+        setIsGoogleLoading(false);
+        return;
+      }
+      
+      const userData = JSON.parse(userStr);
+      console.log('👤 User data:', userData);
+      
+      // Redirect based on role
+      if (userData.role === 'admin') {
+        console.log('🔄 Redirecting admin to /admin');
+        router.replace('/admin');
+      } else {
+        console.log('🔄 Redirecting user to home page');
+        router.replace('/');
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Google sign in failed';
+      console.error('❌ Google sign in failed:', errorMessage);
       setIsGoogleLoading(false);
     }
   };
@@ -113,12 +134,39 @@ const LoginPage = () => {
     if (!emailOrPhoneError && !passwordError) {
       setIsLoading(true);
       try {
+        console.log('🔵 Starting regular login...');
         await login(formData.emailOrPhone, formData.password);
-        router.push('/');
-      } catch (error: any) {
-        console.error('Login error:', error);
-        // Error is already set in the store
-      } finally {
+        
+        console.log('✅ Login successful, checking localStorage...');
+        
+        // Check if data was saved
+        const token = localStorage.getItem('auth_token');
+        const userStr = localStorage.getItem('auth_user');
+        
+        console.log('📦 LocalStorage after login:', {
+          hasToken: !!token,
+          hasUser: !!userStr
+        });
+        
+        if (!token || !userStr) {
+          console.error('❌ localStorage is empty after login!');
+          setIsLoading(false);
+          return;
+        }
+        
+        const userData = JSON.parse(userStr);
+        console.log('👤 User data:', userData);
+        
+        // Redirect based on role
+        if (userData.role === 'admin') {
+          console.log('🔄 Redirecting admin to /admin');
+          router.replace('/admin');
+        } else {
+          console.log('🔄 Redirecting user to home page');
+          router.replace('/');
+        }
+      } catch (error: unknown) {
+        console.error('❌ Login error:', error);
         setIsLoading(false);
       }
     }

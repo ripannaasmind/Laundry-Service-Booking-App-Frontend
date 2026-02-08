@@ -57,9 +57,9 @@ export const usePasswordResetStore = create<PasswordResetState>((set, get) => ({
       } else {
         throw new Error(response.data.message || 'Failed to send OTP');
       }
-    } catch (error: any) {
-      console.error('❌ Forgot Password Error:', error.response?.data || error.message);
-      const errorMessage = error.response?.data?.message || 'Failed to send OTP. Please try again.';
+    } catch (error: unknown) {
+      console.error('❌ Forgot Password Error:', error);
+      const errorMessage = (error as any)?.response?.data?.message || 'Failed to send OTP. Please try again.';
       set({ error: errorMessage, isLoading: false });
       return false;
     }
@@ -93,9 +93,9 @@ export const usePasswordResetStore = create<PasswordResetState>((set, get) => ({
       } else {
         throw new Error(response.data.message || 'Invalid OTP');
       }
-    } catch (error: any) {
-      console.error('❌ Verify OTP Error:', error.response?.data || error.message);
-      const errorMessage = error.response?.data?.message || 'Invalid OTP. Please try again.';
+    } catch (error: unknown) {
+      console.error('❌ Verify OTP Error:', error);
+      const errorMessage = (error as any)?.response?.data?.message || 'Invalid OTP. Please try again.';
       set({ error: errorMessage, isLoading: false });
       return false;
     }
@@ -129,9 +129,9 @@ export const usePasswordResetStore = create<PasswordResetState>((set, get) => ({
       } else {
         throw new Error(response.data.message || 'Failed to reset password');
       }
-    } catch (error: any) {
-      console.error('❌ Reset Password Error:', error.response?.data || error.message);
-      const errorMessage = error.response?.data?.message || 'Failed to reset password. Please try again.';
+    } catch (error: unknown) {
+      console.error('❌ Reset Password Error:', error);
+      const errorMessage = (error as any)?.response?.data?.message || 'Failed to reset password. Please try again.';
       set({ error: errorMessage, isLoading: false });
       return false;
     }

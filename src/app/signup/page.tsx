@@ -39,7 +39,17 @@ const SignupPage = () => {
   // Redirect if user is already logged in
   useEffect(() => {
     if (isAuthenticated || user) {
-      router.push('/');
+      const userStr = localStorage.getItem('auth_user');
+      if (userStr) {
+        const userData = JSON.parse(userStr);
+        if (userData.role === 'admin') {
+          router.push('/admin');
+        } else {
+          router.push('/dashboard');
+        }
+      } else {
+        router.push('/dashboard');
+      }
     }
   }, [user, isAuthenticated, router]);
 
@@ -147,8 +157,10 @@ const SignupPage = () => {
           password: formData.password,
           confirmPassword: formData.confirmPassword,
         });
-        router.push('/');
-      } catch (error: any) {
+        
+        // Redirect to dashboard for regular users
+        router.push('/dashboard');
+      } catch (error: unknown) {
         console.error('Registration error:', error);
         // Error is already set in the store
       } finally {

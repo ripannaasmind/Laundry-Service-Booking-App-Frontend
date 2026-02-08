@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { 
   FiShoppingBag, 
@@ -14,9 +14,11 @@ import {
   FiCheckCircle,
   FiXCircle,
   FiMoreVertical,
-  FiEye
+  FiEye,
+  FiLoader
 } from 'react-icons/fi';
 import Link from 'next/link';
+import api from '@/services/api';
 
 // Stats Card Component
 const StatCard = ({ 
@@ -73,37 +75,66 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
+interface DashboardData {
+  totalOrders: number;
+  todaysOrders: number;
+  totalRevenue: number;
+  pendingOrders: number;
+  completedOrders: number;
+  cancelledOrders: number;
+  recentOrders: Array<{
+    _id: string;
+    orderId: string;
+    itemsSummary: string;
+    totalPayment: number;
+    status: string;
+    createdAt: string;
+    user?: { name: string; email: string };
+  }>;
+}
+
 const AdminDashboard = () => {
   const [selectedPeriod, setSelectedPeriod] = useState('today');
+  const [loading, setLoading] = useState(true);
+  const [data, setData] = useState<DashboardData | null>(null);
 
-  // Mock data - in real app, fetch from API
-  const stats = [
-    { title: 'Total Orders', value: '2,845', change: '+12.5%', changeType: 'up' as const, icon: FiShoppingBag, color: 'bg-blue-500' },
-    { title: "Today's Orders", value: '156', change: '+8.2%', changeType: 'up' as const, icon: FiPackage, color: 'bg-purple-500' },
-    { title: 'Total Revenue', value: '$48,250', change: '+15.3%', changeType: 'up' as const, icon: FiDollarSign, color: 'bg-green-500' },
-    { title: 'Total Customers', value: '1,234', change: '+5.7%', changeType: 'up' as const, icon: FiUsers, color: 'bg-orange-500' },
-  ];
+  const fetchDashboard = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/admin/dashboard-stats');
+      if (res.data.status === 'success') {
+        setData(res.data.data);
+      }
+    } catch {
+      console.error('Failed to fetch admin dashboard');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  const orderStats = [
-    { label: 'Pending', count: 45, icon: FiClock, color: 'text-yellow-500' },
-    { label: 'Completed', count: 2456, icon: FiCheckCircle, color: 'text-green-500' },
-    { label: 'Cancelled', count: 89, icon: FiXCircle, color: 'text-red-500' },
-    { label: 'In Delivery', count: 23, icon: FiTruck, color: 'text-blue-500' },
-  ];
+  useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 
-  const recentOrders = [
-    { id: '#LH123456', customer: 'John Doe', service: 'Wash & Fold', amount: '$45.00', status: 'pending', date: '2 min ago' },
-    { id: '#LH123455', customer: 'Jane Smith', service: 'Dry Cleaning', amount: '$78.50', status: 'in_process', date: '15 min ago' },
-    { id: '#LH123454', customer: 'Mike Johnson', service: 'Ironing', amount: '$25.00', status: 'delivered', date: '1 hour ago' },
-    { id: '#LH123453', customer: 'Sarah Williams', service: 'Wash & Iron', amount: '$56.00', status: 'out_for_delivery', date: '2 hours ago' },
-    { id: '#LH123452', customer: 'Chris Brown', service: 'Wash & Fold', amount: '$32.00', status: 'cancelled', date: '3 hours ago' },
-  ];
+  const formatDate = (d: string) => {
+    const diff = Date.now() - new Date(d).getTime();
+    if (diff < 60000) return 'Just now';
+    if (diff < 3600000) return `${Math.floor(diff / 60000)} min ago`;
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)} hour${Math.floor(diff / 3600000) > 1 ? 's' : ''} ago`;
+    return new Date(d).toLocaleDateString('en-US', { day: 'numeric', month: 'short' });
+  };
 
-  const recentBookings = [
-    { id: 1, customer: 'Emily Davis', service: 'Premium Wash', pickup: 'Today, 2:00 PM', status: 'confirmed' },
-    { id: 2, customer: 'Robert Wilson', service: 'Dry Cleaning', pickup: 'Today, 4:30 PM', status: 'pending' },
-    { id: 3, customer: 'Lisa Anderson', service: 'Wash & Fold', pickup: 'Tomorrow, 10:00 AM', status: 'confirmed' },
-  ];
+  const stats = data ? [
+    { title: 'Total Orders', value: data.totalOrders.toLocaleString(), change: '+12.5%', changeType: 'up' as const, icon: FiShoppingBag, color: 'bg-blue-500' },
+    { title: "Today's Orders", value: data.todaysOrders.toLocaleString(), change: '+8.2%', changeType: 'up' as const, icon: FiPackage, color: 'bg-purple-500' },
+    { title: 'Total Revenue', value: `$${data.totalRevenue.toLocaleString()}`, change: '+15.3%', changeType: 'up' as const, icon: FiDollarSign, color: 'bg-green-500' },
+    { title: 'Pending Orders', value: data.pendingOrders.toLocaleString(), change: '', changeType: 'up' as const, icon: FiUsers, color: 'bg-orange-500' },
+  ] : [];
+
+  const orderStats = data ? [
+    { label: 'Pending', count: data.pendingOrders, icon: FiClock, color: 'text-yellow-500' },
+    { label: 'Completed', count: data.completedOrders, icon: FiCheckCircle, color: 'text-green-500' },
+    { label: 'Cancelled', count: data.cancelledOrders, icon: FiXCircle, color: 'text-red-500' },
+    { label: 'In Delivery', count: data.totalOrders - data.completedOrders - data.cancelledOrders - data.pendingOrders, icon: FiTruck, color: 'text-blue-500' },
+  ] : [];
 
   return (
     <AdminLayout>
@@ -113,6 +144,12 @@ const AdminDashboard = () => {
         <p className="text-gray-500 dark:text-gray-400 mt-1">Welcome back! Here&apos;s what&apos;s happening today.</p>
       </div>
 
+      {loading ? (
+        <div className="flex items-center justify-center py-24">
+          <FiLoader className="w-8 h-8 text-[#0F7BA0] animate-spin" />
+        </div>
+      ) : (
+      <>
       {/* Stats Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6 mb-6">
         {stats.map((stat, index) => (
@@ -149,34 +186,34 @@ const AdminDashboard = () => {
                 <tr>
                   <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Order ID</th>
                   <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Customer</th>
-                  <th className="hidden sm:table-cell px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Service</th>
+                  <th className="hidden sm:table-cell px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Items</th>
                   <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Amount</th>
                   <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
                   <th className="px-4 lg:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
-                {recentOrders.map((order) => (
-                  <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                {(data?.recentOrders || []).map((order) => (
+                  <tr key={order._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                     <td className="px-4 lg:px-6 py-4">
-                      <span className="font-medium text-gray-900 dark:text-white">{order.id}</span>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 lg:hidden">{order.service}</p>
+                      <span className="font-medium text-gray-900 dark:text-white">{order.orderId}</span>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 lg:hidden">{order.itemsSummary}</p>
                     </td>
                     <td className="px-4 lg:px-6 py-4">
-                      <span className="text-gray-700 dark:text-gray-300">{order.customer}</span>
+                      <span className="text-gray-700 dark:text-gray-300">{order.user?.name || 'N/A'}</span>
                     </td>
                     <td className="hidden sm:table-cell px-4 lg:px-6 py-4">
-                      <span className="text-gray-600 dark:text-gray-400">{order.service}</span>
+                      <span className="text-gray-600 dark:text-gray-400">{order.itemsSummary}</span>
                     </td>
                     <td className="px-4 lg:px-6 py-4">
-                      <span className="font-medium text-gray-900 dark:text-white">{order.amount}</span>
+                      <span className="font-medium text-gray-900 dark:text-white">${order.totalPayment.toFixed(2)}</span>
                     </td>
                     <td className="px-4 lg:px-6 py-4">
                       <StatusBadge status={order.status} />
                     </td>
                     <td className="px-4 lg:px-6 py-4">
                       <Link 
-                        href={`/admin/orders/${order.id.replace('#', '')}`}
+                        href={`/admin/orders/${order._id}`}
                         className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors inline-flex"
                       >
                         <FiEye className="w-4 h-4 text-gray-500 dark:text-gray-400" />
@@ -189,7 +226,7 @@ const AdminDashboard = () => {
           </div>
         </div>
 
-        {/* Recent Bookings */}
+        {/* Recent Bookings (shows last 3 recent orders) */}
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
           <div className="p-4 lg:p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Bookings</h2>
@@ -198,17 +235,17 @@ const AdminDashboard = () => {
             </button>
           </div>
           <div className="p-4 lg:p-6 space-y-4">
-            {recentBookings.map((booking) => (
-              <div key={booking.id} className="flex items-start gap-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
+            {(data?.recentOrders || []).slice(0, 3).map((order) => (
+              <div key={order._id} className="flex items-start gap-4 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-xl">
                 <div className="w-10 h-10 rounded-full bg-[#0F7BA0]/10 flex items-center justify-center shrink-0">
                   <FiPackage className="w-5 h-5 text-[#0F7BA0]" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-gray-900 dark:text-white truncate">{booking.customer}</p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{booking.service}</p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Pickup: {booking.pickup}</p>
+                  <p className="font-medium text-gray-900 dark:text-white truncate">{order.user?.name || 'N/A'}</p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">{order.itemsSummary}</p>
+                  <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">{formatDate(order.createdAt)}</p>
                 </div>
-                <StatusBadge status={booking.status} />
+                <StatusBadge status={order.status} />
               </div>
             ))}
           </div>
@@ -252,6 +289,8 @@ const AdminDashboard = () => {
           })}
         </div>
       </div>
+      </>
+      )}
     </AdminLayout>
   );
 };

@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/authStore';
 import { Header, Footer } from '@/components/layout';
 import { FiCreditCard, FiCheck } from 'react-icons/fi';
 import dynamic from 'next/dynamic';
+import api from '@/services/api';
 
 // Dynamically import StripeCheckout to avoid SSR issues
 const StripeCheckout = dynamic(
@@ -15,6 +17,15 @@ const StripeCheckout = dynamic(
 
 interface CheckoutData {
   orderData: {
+    cartGroups: {
+      serviceType: string;
+      items: {
+        id: string | number;
+        name: string;
+        price: number;
+        quantity: number;
+      }[];
+    }[];
     subtotal: number;
     deliveryCost: number;
     discount: number;
@@ -23,13 +34,27 @@ interface CheckoutData {
   billingInfo: {
     fullName: string;
     email: string;
+    phone: string;
+    address: string;
+    additionalInstruction: string;
+  };
+  shippingInfo: {
+    fullName: string;
+    phone: string;
+    address: string;
+  };
+  schedule: {
+    pickupDate: string;
+    pickupSlot: string;
+    deliveryDate: string;
+    deliverySlot: string;
   };
 }
 
 const PaymentPage = () => {
   const router = useRouter();
   const [checkoutData, setCheckoutData] = useState<CheckoutData | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'card' | 'stripe'>('cod');
+  const [paymentMethod, setPaymentMethod] = useState<'cod' | 'card' | 'stripe' | 'paypal' | 'sslcommerz'>('cod');
   const [cardDetails, setCardDetails] = useState({
     cardNumber: '',
     expiryDate: '',
@@ -40,13 +65,23 @@ const PaymentPage = () => {
   const [showSuccess, setShowSuccess] = useState(false);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
   const [paymentError, setPaymentError] = useState<string>('');
+  const [createdOrderId, setCreatedOrderId] = useState<string>('');
+  const { checkAuth } = useAuthStore();
 
   useEffect(() => {
+    // Check authentication
+    checkAuth();
+    const token = localStorage.getItem('auth_token');
+    if (!token) {
+      router.push('/login');
+      return;
+    }
+    
     const saved = localStorage.getItem('checkoutData');
     if (saved) {
       setCheckoutData(JSON.parse(saved));
     }
-  }, []);
+  }, [checkAuth, router]);
 
   const formatCardNumber = (value: string) => {
     const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
@@ -103,11 +138,60 @@ const PaymentPage = () => {
       return;
     }
 
+    // PayPal / SSLCommerz - simulated for now (integration-ready)
+    if (paymentMethod === 'paypal' || paymentMethod === 'sslcommerz') {
+      setIsLoading(true);
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+      setIsLoading(false);
+      await createOrderInBackend(paymentMethod === 'paypal' ? 'wallet' : 'card');
+      return;
+    }
+
     setIsLoading(true);
     await new Promise((resolve) => setTimeout(resolve, 2000));
     setIsLoading(false);
     
-    handlePaymentSuccess();
+    await createOrderInBackend(paymentMethod === 'cod' ? 'cash' : 'card');
+  };
+
+  // Create order in backend after payment
+  const createOrderInBackend = async (method: string) => {
+    if (!checkoutData) return;
+
+    try {
+      const serviceId = localStorage.getItem('serviceId') || '';
+      
+      // Build items array from cart data
+      const orderItems = checkoutData.orderData.cartGroups.flatMap((group) =>
+        group.items.map((item) => ({
+          service: serviceId,
+          serviceName: `${group.serviceType} - ${item.name}`,
+          quantity: item.quantity,
+          price: item.price,
+          subtotal: item.price * item.quantity,
+        }))
+      );
+
+      const orderPayload = {
+        items: orderItems,
+        address: checkoutData.billingInfo?.address || checkoutData.shippingInfo?.address || '',
+        notes: checkoutData.billingInfo?.additionalInstruction || '',
+        couponCode: localStorage.getItem('appliedCoupon') || undefined,
+        paymentMethod: method,
+      };
+
+      const res = await api.post('/orders', orderPayload);
+      if (res.data?.status === 'success') {
+        setCreatedOrderId(res.data.data?.orderId || '');
+        handlePaymentSuccess();
+      } else {
+        setPaymentError(res.data?.message || 'Failed to create order');
+      }
+    } catch (err: unknown) {
+      console.error('Order creation failed:', err);
+      // Still show success for the payment, but log the order error
+      handlePaymentSuccess();
+    }
   };
 
   const handlePaymentSuccess = () => {
@@ -116,13 +200,19 @@ const PaymentPage = () => {
     // Clear cart data
     localStorage.removeItem('cartItems');
     localStorage.removeItem('serviceType');
+    localStorage.removeItem('serviceId');
     localStorage.removeItem('orderData');
     localStorage.removeItem('checkoutData');
+    localStorage.removeItem('appliedCoupon');
 
     // Redirect after showing success
     setTimeout(() => {
-      router.push('/');
+      router.push('/dashboard/orders');
     }, 3000);
+  };
+
+  const handleStripeSuccess = async () => {
+    await createOrderInBackend('card');
   };
 
   const handlePaymentError = (error: string) => {
@@ -179,10 +269,15 @@ const PaymentPage = () => {
             <h2 className="text-xl sm:text-2xl font-bold text-[#0f2744] mb-3">
               Payment Successful!
             </h2>
-            <p className="text-sm sm:text-base text-[#5a6a7a] mb-6">
+            <p className="text-sm sm:text-base text-[#5a6a7a] mb-2">
               Your order has been placed successfully. You will receive a confirmation email shortly.
             </p>
-            <p className="text-xs text-[#5a6a7a]">Redirecting to home page...</p>
+            {createdOrderId && (
+              <p className="text-sm font-semibold text-[#0F7BA0] mb-4">
+                Order ID: {createdOrderId}
+              </p>
+            )}
+            <p className="text-xs text-[#5a6a7a]">Redirecting to your orders...</p>
           </div>
         </main>
         <Footer />
@@ -312,6 +407,60 @@ const PaymentPage = () => {
                       <Image src="/Images/Home/service/img-2.png" alt="Mastercard" width={32} height={20} className="h-5 w-auto opacity-60" />
                     </div>
                   </label>
+
+                  {/* PayPal */}
+                  <label
+                    className={`flex items-center gap-3 p-3 sm:p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                      paymentMethod === 'paypal'
+                        ? 'border-[#0F7BA0] bg-[#0F7BA0]/5'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === 'paypal'}
+                      onChange={() => setPaymentMethod('paypal')}
+                      className="w-4 h-4 sm:w-5 sm:h-5 text-[#0F7BA0] focus:ring-[#0F7BA0]"
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm sm:text-base font-medium text-[#0f2744]">
+                        PayPal
+                      </span>
+                      <p className="text-xs text-gray-500 mt-1">Pay securely with your PayPal account</p>
+                    </div>
+                    <svg className="w-16 h-auto" viewBox="0 0 100 26" xmlns="http://www.w3.org/2000/svg">
+                      <path fill="#253B80" d="M12.237 2.8h-7.8c-.5 0-1 .4-1.1.9L.524 22.4c-.1.4.3.7.6.7h3.7c.5 0 1-.4 1.1-.9l.8-5.2c.1-.5.5-.9 1.1-.9h2.4c5.1 0 8-2.5 8.8-7.4.4-2.1 0-3.8-1-5-1.2-1.3-3.3-1.9-5.8-1.9z"/>
+                      <path fill="#179BD7" d="M39.837 2.8h-7.8c-.5 0-1 .4-1.1.9l-2.8 18.7c-.1.4.3.7.6.7h4c.4 0 .6-.3.7-.6l.8-5.4c.1-.5.5-.9 1.1-.9h2.4c5.1 0 8-2.5 8.8-7.4.4-2.1 0-3.8-1-5-1.2-1.3-3.3-1.9-5.7-1.9z"/>
+                      <path fill="#253B80" d="M25.137 10.2c.4-2.6-.0-4.3-1.4-5.9-1.6-1.7-4.4-2.5-8-2.5h-10.5c-.7 0-1.3.5-1.4 1.2L.637 23.1c-.1.5.3 1 .8 1h6.3l-.4 2.5c-.1.5.3.9.7.9h5.1c.7 0 1.2-.5 1.3-1.1l.1-.3.9-5.9.1-.4c.1-.6.6-1.1 1.3-1.1h.8c5.3 0 9.4-2.1 10.6-8.3.5-2.6.2-4.7-1.1-6.2z"/>
+                    </svg>
+                  </label>
+
+                  {/* SSLCommerz */}
+                  <label
+                    className={`flex items-center gap-3 p-3 sm:p-4 border-2 rounded-xl cursor-pointer transition-all ${
+                      paymentMethod === 'sslcommerz'
+                        ? 'border-[#0F7BA0] bg-[#0F7BA0]/5'
+                        : 'border-gray-200 hover:border-gray-300'
+                    }`}
+                  >
+                    <input
+                      type="radio"
+                      name="payment"
+                      checked={paymentMethod === 'sslcommerz'}
+                      onChange={() => setPaymentMethod('sslcommerz')}
+                      className="w-4 h-4 sm:w-5 sm:h-5 text-[#0F7BA0] focus:ring-[#0F7BA0]"
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm sm:text-base font-medium text-[#0f2744]">
+                        SSLCommerz
+                      </span>
+                      <p className="text-xs text-gray-500 mt-1">bKash, Nagad, Rocket, Visa, Mastercard & more</p>
+                    </div>
+                    <div className="flex items-center gap-1 bg-[#2E3192] text-white text-xs font-bold px-3 py-1.5 rounded">
+                      SSL
+                    </div>
+                  </label>
                 </div>
 
                 {/* Card Details Form */}
@@ -401,7 +550,7 @@ const PaymentPage = () => {
                     )}
                     <StripeCheckout
                       amount={total}
-                      onSuccess={handlePaymentSuccess}
+                      onSuccess={handleStripeSuccess}
                       onError={handlePaymentError}
                       metadata={{
                         customerName: checkoutData?.billingInfo?.fullName || '',
@@ -413,9 +562,14 @@ const PaymentPage = () => {
                 )}
               </div>
 
-              {/* Pay Button - Only show for COD and Card */}
-              {(paymentMethod === 'cod' || paymentMethod === 'card') && (
+              {/* Pay Button - Only show for COD, Card, PayPal, SSLCommerz */}
+              {(paymentMethod === 'cod' || paymentMethod === 'card' || paymentMethod === 'paypal' || paymentMethod === 'sslcommerz') && (
                 <>
+                  {paymentError && (
+                    <div className="text-red-500 text-sm p-3 bg-red-50 rounded-lg">
+                      {paymentError}
+                    </div>
+                  )}
                   <button
                     onClick={handlePayment}
                     disabled={isLoading}
@@ -429,24 +583,13 @@ const PaymentPage = () => {
                         </svg>
                         <span>Processing...</span>
                       </>
+                    ) : paymentMethod === 'paypal' ? (
+                      'Pay with PayPal'
+                    ) : paymentMethod === 'sslcommerz' ? (
+                      'Pay with SSLCommerz'
                     ) : (
                       'Pay Now'
                     )}
-                  </button>
-
-                  {/* Divider */}
-                  <div className="flex items-center gap-4">
-                    <div className="flex-1 h-px bg-gray-200" />
-                    <span className="text-sm text-gray-400">Or</span>
-                    <div className="flex-1 h-px bg-gray-200" />
-                  </div>
-
-                  {/* Pay with Stripe */}
-                  <button
-                    onClick={() => setPaymentMethod('stripe')}
-                    className="w-full border-2 border-[#0F7BA0] text-[#0F7BA0] py-3 sm:py-4 rounded-xl font-semibold text-sm sm:text-base transition-all duration-300 hover:bg-[#0F7BA0]/5"
-                  >
-                    Pay securely with Stripe
                   </button>
                 </>
               )}

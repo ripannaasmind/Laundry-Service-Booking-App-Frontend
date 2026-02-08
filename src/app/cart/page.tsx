@@ -7,7 +7,7 @@ import { Header, Footer } from '@/components/layout';
 import { FiTrash2, FiPlus, FiMinus } from 'react-icons/fi';
 
 interface CartItem {
-  id: number;
+  id: string | number;
   name: string;
   price: number;
   quantity: number;
@@ -66,7 +66,7 @@ const CartPage = () => {
   const [selectedGroups, setSelectedGroups] = useState<Set<number>>(initialGroups);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(initialItems);
 
-  const handleQuantityChange = (groupIndex: number, itemId: number, delta: number) => {
+  const handleQuantityChange = (groupIndex: number, itemId: string | number, delta: number) => {
     setCartGroups((prev) => {
       const newGroups = [...prev];
       const group = newGroups[groupIndex];
@@ -86,7 +86,7 @@ const CartPage = () => {
     });
   };
 
-  const handleDeleteItem = (groupIndex: number, itemId: number) => {
+  const handleDeleteItem = (groupIndex: number, itemId: string | number) => {
     setCartGroups((prev) => {
       const newGroups = [...prev];
       newGroups[groupIndex].items = newGroups[groupIndex].items.filter(
@@ -122,7 +122,7 @@ const CartPage = () => {
     setSelectedItems(newSelectedItems);
   };
 
-  const handleItemCheckbox = (groupIndex: number, itemId: number, checked: boolean) => {
+  const handleItemCheckbox = (groupIndex: number, itemId: string | number, checked: boolean) => {
     const newSelectedItems = new Set(selectedItems);
     const itemKey = `${groupIndex}-${itemId}`;
     

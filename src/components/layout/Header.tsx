@@ -110,9 +110,21 @@ const Header = () => {
                   onClick={() => setIsProfileOpen(!isProfileOpen)}
                   className="flex items-center gap-3 bg-[#0f2744] dark:bg-[#0F7BA0] text-white px-4 py-2 rounded-lg font-semibold transition-all duration-300 hover:bg-[#1a3a5c] dark:hover:bg-[#0d6a8c] hover:shadow-lg"
                 >
-                  <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-sm">
-                    {getUserInitials()}
-                  </div>
+                  {user.profileImage ? (
+                    <div className="w-8 h-8 rounded-full overflow-hidden ring-2 ring-white/30">
+                      <Image
+                        src={user.profileImage}
+                        alt={user.name}
+                        width={32}
+                        height={32}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center font-bold text-sm">
+                      {getUserInitials()}
+                    </div>
+                  )}
                   <span className="hidden lg:block">{user.name}</span>
                   <svg
                     className={`w-4 h-4 transition-transform duration-300 ${isProfileOpen ? 'rotate-180' : ''}`}
@@ -128,12 +140,29 @@ const Header = () => {
                 {isProfileOpen && (
                   <div className="absolute top-full right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 animate-fade-in-up z-50">
                     {/* User Info */}
-                    <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                      <p className="text-sm font-semibold text-[#0f2744] dark:text-white">{user.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{user.email}</p>
-                      {user.phone && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400">{user.phone}</p>
+                    <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex items-center gap-3">
+                      {user.profileImage ? (
+                        <div className="w-10 h-10 rounded-full overflow-hidden shrink-0">
+                          <Image
+                            src={user.profileImage}
+                            alt={user.name}
+                            width={40}
+                            height={40}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-[#0f2744] dark:bg-[#0F7BA0] flex items-center justify-center text-white font-bold text-sm shrink-0">
+                          {getUserInitials()}
+                        </div>
                       )}
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-[#0f2744] dark:text-white truncate">{user.name}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{user.email}</p>
+                        {user.phone && (
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.phone}</p>
+                        )}
+                      </div>
                     </div>
 
                     {/* Menu Items */}

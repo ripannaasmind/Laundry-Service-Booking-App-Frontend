@@ -1,40 +1,104 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import DashboardLayout from '@/components/dashboard/DashboardLayout';
-import { FiCamera, FiUser, FiMail, FiPhone, FiMapPin } from 'react-icons/fi';
+import { FiCamera, FiUser, FiMail, FiPhone, FiEdit3, FiSave, FiX, FiCheck } from 'react-icons/fi';
+import { useAuthStore } from '@/store/authStore';
+import api from '@/services/api';
 
 interface UserProfile {
-  firstName: string;
-  lastName: string;
+  name: string;
   email: string;
-  gender: string;
   phone: string;
-  altPhone: string;
-  addressLine1: string;
-  addressLine2: string;
   profileImage: string;
 }
 
 const ProfilePage = () => {
+  const { user, token } = useAuthStore();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isFetching, setIsFetching] = useState(true);
   const [profile, setProfile] = useState<UserProfile>({
-    firstName: 'Ahmmed Imtiaj',
-    lastName: 'Shahriar',
-    email: 'shahriar@gmail.com',
-    gender: 'Male',
-    phone: '+001647857657',
-    altPhone: '+00545587887',
-    addressLine1: 'Shahi mansion, Professor para',
-    addressLine2: 'Mirjapur, Suihari, Mirzapur, Dinajpur, Rangpur',
-    profileImage: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face',
+    name: '',
+    email: '',
+    phone: '',
+    profileImage: '',
+  });
+  const [editProfile, setEditProfile] = useState<UserProfile>({
+    name: '',
+    email: '',
+    phone: '',
+    profileImage: '',
   });
   const [showImageModal, setShowImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [message, setMessage] = useState('');
+  const [messageType, setMessageType] = useState<'success' | 'error'>('success');
 
-  const handleChange = (field: keyof UserProfile, value: string) => {
-    setProfile(prev => ({ ...prev, [field]: value }));
+  // Fetch profile from backend API
+  useEffect(() => {
+    const fetchProfile = async () => {
+      setIsFetching(true);
+      try {
+        if (token) {
+          const response = await api.get('/auth/profile');
+          if (response.data.status === 'success') {
+            const userData = response.data.data;
+            const profileData: UserProfile = {
+              name: userData.name || '',
+              email: userData.email || '',
+              phone: userData.phone || '',
+              profileImage: userData.profileImage || '',
+            };
+            setProfile(profileData);
+            setEditProfile(profileData);
+          }
+        } else if (user) {
+          // Fallback to local store data
+          const profileData: UserProfile = {
+            name: user.name || '',
+            email: user.email || '',
+            phone: user.phone || '',
+            profileImage: '',
+          };
+          setProfile(profileData);
+          setEditProfile(profileData);
+        }
+      } catch (error: unknown) {
+        console.error('Failed to fetch profile:', error);
+        // Fallback to local store
+        if (user) {
+          const profileData: UserProfile = {
+            name: user.name || '',
+            email: user.email || '',
+            phone: user.phone || '',
+            profileImage: '',
+          };
+          setProfile(profileData);
+          setEditProfile(profileData);
+        }
+      } finally {
+        setIsFetching(false);
+      }
+    };
+    fetchProfile();
+  }, [token, user]);
+
+  const handleEditChange = (field: keyof UserProfile, value: string) => {
+    setEditProfile(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleStartEdit = () => {
+    setEditProfile({ ...profile });
+    setIsEditing(true);
+    setMessage('');
+  };
+
+  const handleCancelEdit = () => {
+    setEditProfile({ ...profile });
+    setIsEditing(false);
+    setMessage('');
   };
 
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -47,31 +111,131 @@ const ProfilePage = () => {
 
   const handleImageUpload = () => {
     if (selectedImage) {
+      setEditProfile(prev => ({ ...prev, profileImage: selectedImage }));
       setProfile(prev => ({ ...prev, profileImage: selectedImage }));
       setShowImageModal(false);
       setSelectedImage(null);
     }
   };
 
-  const handleUpdate = () => {
-    setMessage('Profile updated successfully!');
-    setTimeout(() => setMessage(''), 3000);
+  const handleUpdate = async () => {
+    setIsLoading(true);
+    setMessage('');
+    try {
+      const response = await api.put('/auth/profile', {
+        name: editProfile.name,
+        phone: editProfile.phone,
+      });
+
+      if (response.data.status === 'success') {
+        const updatedData = response.data.data;
+        const updatedProfile: UserProfile = {
+          name: updatedData.name || editProfile.name,
+          email: updatedData.email || editProfile.email,
+          phone: updatedData.phone || editProfile.phone,
+          profileImage: editProfile.profileImage,
+        };
+        setProfile(updatedProfile);
+        setEditProfile(updatedProfile);
+
+        // Update local store
+        const currentUser = useAuthStore.getState().user;
+        if (currentUser) {
+          const updatedUser = {
+            ...currentUser,
+            name: updatedProfile.name,
+            phone: updatedProfile.phone,
+          };
+          localStorage.setItem('auth_user', JSON.stringify(updatedUser));
+          useAuthStore.setState({ user: updatedUser });
+        }
+
+        setMessage('Profile updated successfully!');
+        setMessageType('success');
+        setIsEditing(false);
+      }
+    } catch (error: unknown) {
+      const errMsg = (error as any)?.response?.data?.message || 'Failed to update profile. Please try again.';
+      setMessage(errMsg);
+      setMessageType('error');
+    } finally {
+      setIsLoading(false);
+      setTimeout(() => setMessage(''), 4000);
+    }
   };
+
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  if (isFetching) {
+    return (
+      <DashboardLayout>
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 p-12">
+          <div className="flex flex-col items-center justify-center gap-4">
+            <div className="w-12 h-12 border-4 border-[#0F7BA0] border-t-transparent rounded-full animate-spin" />
+            <p className="text-gray-500 dark:text-gray-400">Loading profile...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
-        {/* Header */}
-        <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700">
+        {/* Header with Edit Button */}
+        <div className="p-4 sm:p-6 border-b border-gray-100 dark:border-gray-700 flex items-center justify-between">
           <h1 className="text-lg font-semibold text-[#0F2744] dark:text-white border-b-2 border-[#0F7BA0] pb-2 inline-block">
-            My Personal Info
+            My Profile
           </h1>
+          {!isEditing ? (
+            <button
+              onClick={handleStartEdit}
+              className="flex items-center gap-2 px-4 py-2 bg-[#0F7BA0] text-white rounded-lg hover:bg-[#0d6a8a] transition-colors text-sm font-medium shadow-sm"
+            >
+              <FiEdit3 className="w-4 h-4" />
+              Edit Profile
+            </button>
+          ) : (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCancelEdit}
+                className="flex items-center gap-1.5 px-3 py-2 border border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-sm font-medium"
+              >
+                <FiX className="w-4 h-4" />
+                Cancel
+              </button>
+              <button
+                onClick={handleUpdate}
+                disabled={isLoading}
+                className="flex items-center gap-1.5 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium shadow-sm disabled:opacity-60"
+              >
+                {isLoading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <FiSave className="w-4 h-4" />
+                )}
+                Save Changes
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Content */}
         <div className="p-4 sm:p-6 lg:p-8">
           {message && (
-            <div className="mb-6 p-3 rounded-lg text-sm bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400">
+            <div className={`mb-6 p-3 rounded-lg text-sm flex items-center gap-2 ${
+              messageType === 'success'
+                ? 'bg-green-100 text-green-700 dark:bg-green-900/20 dark:text-green-400'
+                : 'bg-red-100 text-red-700 dark:bg-red-900/20 dark:text-red-400'
+            }`}>
+              {messageType === 'success' ? <FiCheck className="w-4 h-4" /> : <FiX className="w-4 h-4" />}
               {message}
             </div>
           )}
@@ -79,59 +243,61 @@ const ProfilePage = () => {
           {/* Profile Picture */}
           <div className="flex justify-center mb-8">
             <div className="relative group">
-              <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-[#0F7BA0] dark:border-[#0F7BA0]">
-                <Image
-                  src={profile.profileImage}
-                  alt="Profile"
-                  fill
-                  className="object-cover"
-                  unoptimized
-                />
+              <div className="relative w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-[#0F7BA0]/30 shadow-lg">
+                {profile.profileImage ? (
+                  <Image
+                    src={profile.profileImage}
+                    alt="Profile"
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="w-full h-full bg-linear-to-br from-[#0F2744] to-[#0F7BA0] flex items-center justify-center">
+                    <span className="text-3xl sm:text-4xl font-bold text-white">
+                      {getInitials(profile.name || 'U')}
+                    </span>
+                  </div>
+                )}
               </div>
-              <button
-                onClick={() => setShowImageModal(true)}
-                className="absolute bottom-0 right-0 w-10 h-10 bg-[#0F7BA0] hover:bg-[#0d6a8a] text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
-              >
-                <FiCamera className="w-5 h-5" />
-              </button>
+              {isEditing && (
+                <button
+                  onClick={() => setShowImageModal(true)}
+                  className="absolute bottom-0 right-0 w-9 h-9 sm:w-10 sm:h-10 bg-[#0F7BA0] hover:bg-[#0d6a8a] text-white rounded-full flex items-center justify-center shadow-lg transition-colors"
+                >
+                  <FiCamera className="w-4 h-4 sm:w-5 sm:h-5" />
+                </button>
+              )}
+              <p className="text-center mt-3 text-sm text-gray-500 dark:text-gray-400">
+                {profile.email}
+              </p>
             </div>
           </div>
 
-          {/* Form */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-4">
-            {/* First Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">First Name</label>
+          {/* Form Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 max-w-2xl mx-auto">
+            {/* Full Name */}
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Full Name</label>
               <div className="relative">
                 <div className="absolute inset-y-0 start-0 flex items-center ps-4 pointer-events-none">
                   <FiUser className="w-5 h-5 text-gray-400" />
                 </div>
                 <input
                   type="text"
-                  value={profile.firstName}
-                  onChange={(e) => handleChange('firstName', e.target.value)}
-                  className="w-full ps-12 pe-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#0F7BA0] focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  value={isEditing ? editProfile.name : profile.name}
+                  onChange={(e) => handleEditChange('name', e.target.value)}
+                  disabled={!isEditing}
+                  className={`w-full ps-12 pe-4 py-3 border rounded-lg outline-none transition-all ${
+                    isEditing
+                      ? 'border-[#0F7BA0] bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#0F7BA0]/30'
+                      : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 cursor-default'
+                  } text-gray-900 dark:text-white`}
                 />
               </div>
             </div>
 
-            {/* Last Name */}
-            <div>
-              <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Last Name</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 start-0 flex items-center ps-4 pointer-events-none">
-                  <FiUser className="w-5 h-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  value={profile.lastName}
-                  onChange={(e) => handleChange('lastName', e.target.value)}
-                  className="w-full ps-12 pe-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#0F7BA0] focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-              </div>
-            </div>
-
-            {/* Email */}
+            {/* Email Address */}
             <div>
               <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Email Address</label>
               <div className="relative">
@@ -141,21 +307,11 @@ const ProfilePage = () => {
                 <input
                   type="email"
                   value={profile.email}
-                  onChange={(e) => handleChange('email', e.target.value)}
-                  className="w-full ps-12 pe-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#0F7BA0] focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  disabled
+                  className="w-full ps-12 pe-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700/50 cursor-default text-gray-500 dark:text-gray-400"
                 />
               </div>
-            </div>
-
-            {/* Gender */}
-            <div>
-              <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Gender</label>
-              <input
-                type="text"
-                value={profile.gender}
-                onChange={(e) => handleChange('gender', e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#0F7BA0] focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-              />
+              <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">Email cannot be changed</p>
             </div>
 
             {/* Phone Number */}
@@ -167,69 +323,36 @@ const ProfilePage = () => {
                 </div>
                 <input
                   type="tel"
-                  value={profile.phone}
-                  onChange={(e) => handleChange('phone', e.target.value)}
-                  className="w-full ps-12 pe-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#0F7BA0] focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-              </div>
-            </div>
-
-            {/* Alternative Phone Number */}
-            <div>
-              <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Alternative Phone Number</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 start-0 flex items-center ps-4 pointer-events-none">
-                  <FiPhone className="w-5 h-5 text-gray-400" />
-                </div>
-                <input
-                  type="tel"
-                  value={profile.altPhone}
-                  onChange={(e) => handleChange('altPhone', e.target.value)}
-                  className="w-full ps-12 pe-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#0F7BA0] focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-              </div>
-            </div>
-
-            {/* Address Line 01 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Address Line 01</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 start-0 flex items-center ps-4 pointer-events-none">
-                  <FiMapPin className="w-5 h-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  value={profile.addressLine1}
-                  onChange={(e) => handleChange('addressLine1', e.target.value)}
-                  className="w-full ps-12 pe-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#0F7BA0] focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                />
-              </div>
-            </div>
-
-            {/* Address Line 02 */}
-            <div>
-              <label className="block text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">Address Line 02</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 start-0 flex items-center ps-4 pointer-events-none">
-                  <FiMapPin className="w-5 h-5 text-gray-400" />
-                </div>
-                <input
-                  type="text"
-                  value={profile.addressLine2}
-                  onChange={(e) => handleChange('addressLine2', e.target.value)}
-                  className="w-full ps-12 pe-4 py-3 border border-gray-200 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-[#0F7BA0] focus:border-transparent outline-none bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                  value={isEditing ? editProfile.phone : profile.phone}
+                  onChange={(e) => handleEditChange('phone', e.target.value)}
+                  disabled={!isEditing}
+                  placeholder={isEditing ? 'Enter phone number' : 'Not provided'}
+                  className={`w-full ps-12 pe-4 py-3 border rounded-lg outline-none transition-all ${
+                    isEditing
+                      ? 'border-[#0F7BA0] bg-white dark:bg-gray-700 focus:ring-2 focus:ring-[#0F7BA0]/30'
+                      : 'border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50 cursor-default'
+                  } text-gray-900 dark:text-white placeholder-gray-400`}
                 />
               </div>
             </div>
           </div>
 
-          {/* Update Button */}
-          <button
-            onClick={handleUpdate}
-            className="mt-6 px-8 py-2.5 bg-[#0F2744] dark:bg-[#0F7BA0] text-white rounded-lg font-medium hover:bg-[#1a3a5c] dark:hover:bg-[#0d6a8a] transition-colors"
-          >
-            Update
-          </button>
+          {/* Account Info Card */}
+          <div className="mt-8 max-w-2xl mx-auto bg-gray-50 dark:bg-gray-700/30 rounded-xl p-5">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3">Account Information</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">Account Type</span>
+                <span className="font-medium text-gray-800 dark:text-gray-200">User</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-500 dark:text-gray-400">Status</span>
+                <span className="inline-flex items-center gap-1 text-green-600 dark:text-green-400 font-medium">
+                  <span className="w-2 h-2 bg-green-500 rounded-full"></span> Active
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -237,47 +360,40 @@ const ProfilePage = () => {
       {showImageModal && (
         <>
           <div 
-            className="fixed inset-0 bg-black/50 z-[9998] animate-fade-in"
+            className="fixed inset-0 bg-black/50 z-9998 animate-fade-in"
             onClick={() => setShowImageModal(false)}
           />
-          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] w-[90vw] max-w-md animate-scale-in">
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-9999 w-[90vw] max-w-md animate-scale-in">
             <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-2xl">
               {!selectedImage ? (
                 <div className="text-center">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Upload Profile Photo</h3>
                   <label className="cursor-pointer">
                     <div className="w-32 h-32 mx-auto mb-4 rounded-full border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center bg-gray-50 dark:bg-gray-700 hover:bg-gray-100 dark:hover:bg-gray-600 transition-colors">
                       <div className="text-center">
                         <FiCamera className="w-8 h-8 text-gray-400 mx-auto mb-2" />
-                        <span className="text-sm text-gray-500 dark:text-gray-400">Click to browse</span>
+                        <span className="text-sm text-gray-500 dark:text-gray-400">Browse</span>
                       </div>
                     </div>
                     <input type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
                   </label>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Drag and drop your image or click to browse</p>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={() => setShowImageModal(false)}
-                      className="flex-1 px-6 py-2.5 border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      disabled
-                      className="flex-1 px-6 py-2.5 bg-gray-300 text-gray-500 rounded-lg font-medium cursor-not-allowed"
-                    >
-                      Upload
-                    </button>
-                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">Click to select an image</p>
+                  <button
+                    onClick={() => setShowImageModal(false)}
+                    className="px-6 py-2.5 border-2 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    Cancel
+                  </button>
                 </div>
               ) : (
                 <div className="text-center">
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Adjust your Photo and then confirm</p>
-                  <div className="w-48 h-48 mx-auto mb-6 border-2 border-dashed border-[#0F7BA0] p-2">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Confirm Photo</h3>
+                  <div className="w-40 h-40 mx-auto mb-6 rounded-full overflow-hidden border-4 border-[#0F7BA0]/30">
                     <Image
                       src={selectedImage}
                       alt="Preview"
-                      width={180}
-                      height={180}
+                      width={160}
+                      height={160}
                       className="w-full h-full object-cover"
                       unoptimized
                     />

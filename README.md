@@ -1,43 +1,74 @@
-# CleanPress - Professional Laundry Service Booking App
+# UltraWash - Professional Laundry Service Booking App
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)
-![Next.js](https://img.shields.io/badge/Next.js-15.1.3-black)
+![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![Next.js](https://img.shields.io/badge/Next.js-16.1.6-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue)
 ![License](https://img.shields.io/badge/license-MIT-green)
 
-A modern, fully responsive laundry service booking application built with Next.js 15, TypeScript, and Tailwind CSS. Perfect for laundry businesses, dry cleaners, and garment care service providers.
+A modern, full-stack laundry service booking application built with Next.js 16, TypeScript, Tailwind CSS v4, and Express.js backend with MongoDB. Features admin dashboard, Google Sign-In, Stripe/PayPal payments, and role-based access control.
+
+---
+
+## 🔐 Default Credentials
+
+### Admin Account
+| Field | Value |
+|-------|-------|
+| **Email** | `admin@ultrawash.com` |
+| **Password** | `Admin@123` |
+| **Login URL** | `/admin/login` |
+
+### Test User Account
+| Field | Value |
+|-------|-------|
+| **Email** | `user@ultrawash.com` |
+| **Password** | `User@123` |
+| **Login URL** | `/login` |
+
+> **Note:** You can also sign in with **Google** using any Gmail account. Google profile pictures will be displayed automatically.
+
+---
 
 ## 🌟 Key Features
 
 ### Core Functionality
-- **Dynamic Service Management** - Multiple service categories (Wash & Fold, Pressing, Dry Cleaning, Hand Wash, etc.)
+- **Full-Stack Application** - Express.js backend with MongoDB + Next.js 16 frontend
+- **Admin Dashboard** - Complete admin panel with orders, users, services, coupons, payments, reviews, reports management
+- **User Dashboard** - Orders, profile, payment methods, chat, settings
+- **Google Sign-In** - Firebase authentication with Google profile picture display
+- **Role-Based Access** - Admin and user roles with route protection
+- **8 Service Categories** - Wash & Fold, Wash & Iron, Dry Cleaning, Ironing, Premium Wash, Bedding & Linen, Stain Removal, Shoe Cleaning
 - **Smart Cart System** - Add/remove items, adjust quantities, apply coupon codes
-- **Service Filtering** - Toggle between Regular and Special services
-- **Responsive Design** - Works flawlessly on all devices (mobile, tablet, desktop)
-- **Modern UI/UX** - Clean, professional design with smooth animations
+- **Multiple Payment Methods** - Stripe, PayPal, SSLCommerz, Cash on Delivery
+- **Responsive Design** - Works flawlessly on all devices
 
 ### Pages Included
-- ✅ **Home** - Landing page with hero, services, features, testimonials
-- ✅ **Services** - Dynamic service listing with category filtering
+- ✅ **Home** - Landing page with hero, services, features, testimonials, FAQ
+- ✅ **Services** - Dynamic service listing with animated toggle filter
 - ✅ **Service Details** - Individual service pages with item selection
 - ✅ **Cart** - Shopping cart with checkbox selection and price calculation
 - ✅ **Checkout** - Complete checkout flow with billing/shipping info
-- ✅ **Payment** - Payment processing page
+- ✅ **Payment** - Stripe, PayPal, SSLCommerz payment processing
 - ✅ **Blog** - Blog listing with categories and search
 - ✅ **About Us** - Company information and team showcase
 - ✅ **Contact** - Contact form with validation and location map
-- ✅ **Authentication** - Login, Signup, Forgot Password, OTP, Create Password
-- ✅ **Success** - Order success confirmation page
+- ✅ **Authentication** - Login, Signup, Google Sign-In, Forgot Password, OTP
+- ✅ **User Dashboard** - Orders, Profile, Payment Methods, Chat, Settings
+- ✅ **Admin Dashboard** - Full management panel (10+ pages)
+- ✅ **Admin Login** - Secure admin authentication with role verification
+- ✅ **Notifications** - User notification center
 
 ### Technical Features
-- **Next.js 15** - Latest features and optimizations
-- **TypeScript** - Type-safe code for better development experience
-- **Tailwind CSS** - Utility-first CSS framework
-- **React Icons** - Comprehensive icon library
-- **Client-Side Rendering** - Fast and interactive user experience
-- **Local Storage** - Persistent cart and order data
-- **Form Validation** - Input validation with error messages
-- **SEO Optimized** - Meta tags and semantic HTML
+- **Next.js 16** - Latest App Router with server/client components
+- **Express.js 5** - Backend API with MongoDB Atlas
+- **TypeScript** - Type-safe code throughout
+- **Tailwind CSS v4** - Modern utility-first styling
+- **Zustand** - State management with localStorage persistence
+- **Firebase Auth** - Google Sign-In with profile picture
+- **JWT Authentication** - Secure token-based auth (24h expiry)
+- **Mongoose 9** - MongoDB ODM with schema validation
+- **Axios** - HTTP client with interceptors for auth tokens
+- **Role-Based Protection** - Admin routes require admin role verification
 
 ## 📁 Project Structure
 
@@ -90,26 +121,40 @@ src/
 ### Prerequisites
 - Node.js 18.0 or higher
 - npm or yarn package manager
+- MongoDB (Atlas or local)
 
-### Setup Instructions
+### Backend Setup
 
-1. **Extract the files** to your desired location
-
-2. **Install dependencies**
 ```bash
+cd Laundry-Service-Booking-App-Backend
 npm install
-# or
-yarn install
+
+# Create .env file (see .env.example)
+# Required: PORT, MONGODB_URI, JWT_SECRET
+
+# Seed database with sample data
+node src/seed.js
+
+# Start backend server (port 3000)
+node src/index.js
 ```
 
-3. **Run development server**
+### Frontend Setup
+
 ```bash
+cd Laundry-Service-Booking-App-Frontend
+npm install
 npm run dev
-# or
-yarn dev
+# Opens on http://localhost:3001
 ```
 
-4. **Open browser** and navigate to `http://localhost:3000`
+### Quick Access
+| URL | Description |
+|-----|-------------|
+| `http://localhost:3001` | Main App |
+| `http://localhost:3001/admin/login` | Admin Panel |
+| `http://localhost:3001/login` | User Login |
+| `http://localhost:3000/api/v1` | Backend API |
 
 For detailed installation steps, see [INSTALLATION.md](INSTALLATION.md)
 
@@ -224,18 +269,31 @@ This project is licensed under the MIT License.
 - React Icons
 - Unsplash (for demo images)
 
-## 📈 Future Updates
+## 📈 Completed Features (Previously Planned)
 
-Planned features:
-- Backend API integration
-- User authentication with JWT
-- Payment gateway integration
-- Admin dashboard
-- Order tracking system
-- Email notifications
-- Multi-language support
+All major features have been implemented:
+- ✅ Backend API integration
+- ✅ User authentication with JWT
+- ✅ Google Sign-In with profile pictures
+- ✅ Payment gateway integration (Stripe, PayPal, SSLCommerz)
+- ✅ Admin dashboard with full management
+- ✅ Order tracking system
+- ✅ Role-based access control
+- ✅ Database seeding with sample data
 
 ## 🔄 Version History
+
+### Version 2.0.0 (February 2026)
+- Full-stack integration with Express.js 5 backend
+- Admin dashboard with 10+ management pages
+- Google Sign-In with profile picture display
+- Real API authentication with role-based access
+- Stripe/PayPal/SSLCommerz payment integration
+- Zustand state management with persistence
+- Database seeding (8 services, 6 coupons, 6 orders, 3 reviews)
+- All service images hosted via Unsplash CDN
+- Tailwind CSS v4 migration
+- User dashboard with orders, profile, settings
 
 ### Version 1.0.0 (January 2026)
 - Initial release
@@ -246,6 +304,4 @@ Planned features:
 
 ---
 
-**Made with ❤️ for CodeCanyon**
-
-For queries or customization requests, please contact us through CodeCanyon.
+**Made with ❤️ by NaasMind**

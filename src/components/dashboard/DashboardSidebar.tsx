@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuthStore } from '@/store/authStore';
 import { 
   FiUser, 
   FiPackage, 
@@ -19,7 +19,10 @@ import {
   FiBell,
   FiGlobe,
   FiMoon,
-  FiDollarSign
+  FiDollarSign,
+  FiHome,
+  FiStar,
+  FiTag
 } from 'react-icons/fi';
 
 interface DashboardSidebarProps {
@@ -29,11 +32,15 @@ interface DashboardSidebarProps {
 const DashboardSidebar = ({ className = '' }: DashboardSidebarProps) => {
   const pathname = usePathname();
   const { t } = useTheme();
+  const { user, logout } = useAuthStore();
   const [settingsOpen, setSettingsOpen] = useState(pathname.includes('/dashboard/settings'));
 
   const menuItems = [
+    { icon: FiHome, label: t('dashboard') || 'Dashboard', href: '/dashboard' },
     { icon: FiUser, label: t('myProfile'), href: '/dashboard/profile' },
     { icon: FiPackage, label: t('myOrder'), href: '/dashboard/orders' },
+    { icon: FiStar, label: t('reviews') || 'Reviews & Feedback', href: '/dashboard/reviews' },
+    { icon: FiTag, label: t('coupons') || 'Coupons & Offers', href: '/dashboard/coupons' },
     { icon: FiMessageSquare, label: t('chat'), href: '/dashboard/chat' },
     { icon: FiCreditCard, label: t('paymentMethod'), href: '/dashboard/payment-method' },
   ];
@@ -46,7 +53,10 @@ const DashboardSidebar = ({ className = '' }: DashboardSidebarProps) => {
     { icon: FiDollarSign, label: t('currency'), href: '/dashboard/settings/currency' },
   ];
 
-  const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/');
+  const isActive = (href: string) => {
+    if (href === '/dashboard') return pathname === '/dashboard';
+    return pathname === href || pathname.startsWith(href + '/');
+  };
   const isSettingsActive = pathname.includes('/dashboard/settings');
 
   return (
@@ -54,17 +64,26 @@ const DashboardSidebar = ({ className = '' }: DashboardSidebarProps) => {
       {/* Profile Section */}
       <div className="p-6 sm:p-8 flex flex-col items-center border-b border-gray-100 dark:border-gray-700">
         <div className="relative group">
-          <div className="w-24 h-24 sm:w-32 sm:h-32 rounded-full border-4 border-[#0F7BA0]/20 shadow-lg bg-gray-200 dark:bg-gray-600">
-            <Image
-              src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=face"
-              alt="Profile"
-              width={128}
-              height={128}
-              className="w-full h-full object-cover"
-            />
+          <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full border-4 border-[#0F7BA0]/20 shadow-lg overflow-hidden bg-linear-to-br from-[#0F2744] to-[#0F7BA0]">
+            {user?.name ? (
+              <div className="w-full h-full flex items-center justify-center">
+                <span className="text-2xl sm:text-3xl font-bold text-white">
+                  {user.name.split(' ').map(n => n.charAt(0)).join('').toUpperCase().slice(0, 2)}
+                </span>
+              </div>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <FiUser className="w-10 h-10 text-white/80" />
+              </div>
+            )}
           </div>
-          
         </div>
+        {user && (
+          <div className="mt-3 text-center">
+            <p className="font-semibold text-gray-900 dark:text-white text-sm sm:text-base">{user.name}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{user.email}</p>
+          </div>
+        )}
       </div>
 
       {/* Navigation Menu */}
@@ -131,6 +150,7 @@ const DashboardSidebar = ({ className = '' }: DashboardSidebarProps) => {
           <li>
             <button
               onClick={() => {
+                logout();
                 window.location.href = '/login';
               }}
               className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 dark:text-gray-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-600 dark:hover:text-red-400 transition-all duration-200"

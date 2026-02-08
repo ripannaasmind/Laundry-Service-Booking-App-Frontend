@@ -8,12 +8,12 @@ export default function NotFound() {
   return (
     <>
 
-      <main className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center px-4 py-20 sm:py-24">
+      <main className="min-h-screen bg-linear-to-br from-gray-50 via-white to-gray-100 flex items-center justify-center px-4 py-20 sm:py-24">
         <div className="max-w-4xl mx-auto text-center">
           {/* 404 Illustration */}
           <div className="mb-8 sm:mb-12 animate-fade-in-up">
             <div className="relative w-full max-w-md mx-auto">
-              <div className="text-[120px] sm:text-[180px] md:text-[220px] font-bold text-transparent bg-clip-text bg-gradient-to-br from-[#0F2744] to-[#0F7BA0] leading-none">
+              <div className="text-[120px] sm:text-[180px] md:text-[220px] font-bold text-transparent bg-clip-text bg-linear-to-br from-[#0F2744] to-[#0F7BA0] leading-none">
                 404
               </div>
               <div className="absolute inset-0 flex items-center justify-center">

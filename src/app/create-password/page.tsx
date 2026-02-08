@@ -153,7 +153,7 @@ const CreatePasswordPage = () => {
 
       {/* Right Side - Form */}
       <div className="flex-1 flex items-center justify-center p-4 sm:p-6 md:p-8 lg:p-12 bg-white lg:bg-gray-50 min-h-screen lg:min-h-0">
-        <div className="w-full max-w-[380px] sm:max-w-[420px] bg-white p-6 sm:p-8 rounded-2xl lg:shadow-xl animate-fade-in-up">
+        <div className="w-full max-w-95 sm:max-w-105 bg-white p-6 sm:p-8 rounded-2xl lg:shadow-xl animate-fade-in-up">
           {/* Logo */}
           <div className="flex justify-center mb-6 sm:mb-8">
             <Image

@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import { FiMenu, FiBell, FiSearch, FiUser, FiSettings, FiLogOut, FiSun, FiMoon } from 'react-icons/fi';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuthStore } from '@/store/authStore';
 
 interface AdminHeaderProps {
   onMenuClick: () => void;
@@ -11,6 +13,8 @@ interface AdminHeaderProps {
 
 const AdminHeader = ({ onMenuClick }: AdminHeaderProps) => {
   const { isDark, setTheme } = useTheme();
+  const { user, logout } = useAuthStore();
+  const router = useRouter();
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -19,6 +23,20 @@ const AdminHeader = ({ onMenuClick }: AdminHeaderProps) => {
     { id: 2, title: 'Payment Received', message: 'Payment confirmed for #LH123455', time: '15 min ago', unread: true },
     { id: 3, title: 'Order Delivered', message: 'Order #LH123454 delivered successfully', time: '1 hour ago', unread: false },
   ];
+
+  const getAdminInitials = () => {
+    if (!user?.name) return 'A';
+    const names = user.name.split(' ');
+    if (names.length >= 2) {
+      return `${names[0][0]}${names[1][0]}`.toUpperCase();
+    }
+    return user.name.substring(0, 2).toUpperCase();
+  };
+
+  const handleLogout = () => {
+    logout();
+    router.push('/admin/login');
+  };
 
   return (
     <header className="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
@@ -107,18 +125,24 @@ const AdminHeader = ({ onMenuClick }: AdminHeaderProps) => {
               onClick={() => setShowProfileMenu(!showProfileMenu)}
               className="flex items-center gap-2 p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
-              <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200">
-                <Image
-                  src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face"
-                  alt="Admin"
-                  width={32}
-                  height={32}
-                  className="w-full h-full object-cover"
-                />
-              </div>
+              {user?.profileImage ? (
+                <div className="w-8 h-8 rounded-full overflow-hidden bg-gray-200">
+                  <Image
+                    src={user.profileImage}
+                    alt={user.name || 'Admin'}
+                    width={32}
+                    height={32}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-[#0F2744] flex items-center justify-center">
+                  <span className="text-white font-bold text-xs">{getAdminInitials()}</span>
+                </div>
+              )}
               <div className="hidden md:block text-left">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-200">Admin User</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">Administrator</p>
+                <p className="text-sm font-medium text-gray-700 dark:text-gray-200">{user?.name || 'Admin'}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{user?.role === 'admin' ? 'Administrator' : 'User'}</p>
               </div>
             </button>
 
@@ -143,7 +167,7 @@ const AdminHeader = ({ onMenuClick }: AdminHeaderProps) => {
                     </a>
                     <hr className="my-2 border-gray-200 dark:border-gray-700" />
                     <button
-                      onClick={() => window.location.href = '/admin/login'}
+                      onClick={handleLogout}
                       className="w-full flex items-center gap-3 px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
                     >
                       <FiLogOut className="w-4 h-4" />

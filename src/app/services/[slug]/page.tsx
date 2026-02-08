@@ -1,15 +1,32 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter, useParams } from 'next/navigation';
 import { Header, Footer } from '@/components/layout';
 import { FiSearch, FiChevronLeft, FiChevronRight, FiPlus, FiMinus } from 'react-icons/fi';
-import { services } from '@/data';
+import api from '@/services/api';
+
+interface ServiceItemData {
+  _id: string;
+  name: string;
+  description: string;
+  price: number;
+  image: string;
+}
+
+interface ServiceData {
+  _id: string;
+  name: string;
+  slug: string;
+  description: string;
+  image: string;
+  items: ServiceItemData[];
+}
 
 interface CartItem {
-  id: number;
+  id: string;
   name: string;
   price: number;
   quantity: number;
@@ -21,19 +38,45 @@ const ServiceDetailPage = () => {
   const params = useParams();
   const slug = params.slug as string;
 
-  // Find service by slug
-  const service = services.find((s) => s.slug === slug);
-
+  const [service, setService] = useState<ServiceData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [quantities, setQuantities] = useState<{ [key: number]: number }>({});
+  const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // Redirect if service not found
-  if (!service) {
-    router.push('/services');
-    return null;
+  // Fetch service from backend
+  useEffect(() => {
+    const fetchService = async () => {
+      try {
+        const res = await api.get(`/services/${slug}`);
+        if (res.data?.status === 'success' && res.data?.data) {
+          setService(res.data.data);
+        } else {
+          router.push('/services');
+        }
+      } catch {
+        router.push('/services');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    if (slug) fetchService();
+  }, [slug, router]);
+
+  if (isLoading) {
+    return (
+      <>
+        <Header />
+        <main className="min-h-screen bg-gray-50 pt-20 sm:pt-24 flex items-center justify-center">
+          <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#0F7BA0]"></div>
+        </main>
+        <Footer />
+      </>
+    );
   }
+
+  if (!service) return null;
 
   const items = service.items || [];
 
@@ -47,11 +90,10 @@ const ServiceDetailPage = () => {
     currentPage * itemsPerPage
   );
 
-  const handleQuantityChange = (id: number, delta: number) => {
+  const handleQuantityChange = (id: string, delta: number) => {
     setQuantities((prev) => {
       const newQuantity = Math.max(0, (prev[id] || 0) + delta);
       if (newQuantity === 0) {
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
         const { [id]: _, ...rest } = prev;
         return rest;
       }
@@ -63,9 +105,9 @@ const ServiceDetailPage = () => {
     return Object.entries(quantities)
       .filter(([, qty]) => qty > 0)
       .map(([id, qty]) => {
-        const item = items.find((i) => i.id === parseInt(id));
+        const item = items.find((i) => i._id === id);
         return {
-          id: parseInt(id),
+          id,
           name: item?.name || '',
           price: item?.price || 0,
           quantity: qty,
@@ -77,8 +119,10 @@ const ServiceDetailPage = () => {
   const handleAddToCart = () => {
     const cartItems = getCartItems();
     if (cartItems.length > 0) {
+      // Store service info along with cart items for order creation
       localStorage.setItem('cartItems', JSON.stringify(cartItems));
-      localStorage.setItem('serviceType', service.title);
+      localStorage.setItem('serviceType', service.name);
+      localStorage.setItem('serviceId', service._id);
       router.push('/cart');
     }
   };
@@ -93,8 +137,9 @@ const ServiceDetailPage = () => {
           {/* Breadcrumb */}
           <div className="mb-4 sm:mb-6 animate-fade-in">
             <Link href="/services" className="text-[#0F7BA0] text-xs sm:text-sm hover:underline">
-              {service.title}
+              ← Back to Services
             </Link>
+            <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-[#0f2744] mt-2">{service.name}</h2>
           </div>
 
           <div className="bg-white rounded-xl sm:rounded-2xl shadow-sm overflow-hidden animate-fade-in-up">
@@ -123,7 +168,7 @@ const ServiceDetailPage = () => {
             <div className="divide-y divide-gray-100">
               {paginatedItems.map((item, index) => (
                 <div
-                  key={`${item.id}-${index}`}
+                  key={`${item._id}-${index}`}
                   className="flex items-center gap-3 sm:gap-4 p-4 sm:p-5 hover:bg-gray-50 transition-colors animate-fade-in"
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
@@ -152,19 +197,19 @@ const ServiceDetailPage = () => {
                     
                     {/* Quantity Controls */}
                     <div className="flex items-center justify-end gap-2">
-                      {quantities[item.id] ? (
+                      {quantities[item._id] ? (
                         <div className="flex items-center gap-2 bg-[#0F7BA0] rounded-lg overflow-hidden">
                           <button
-                            onClick={() => handleQuantityChange(item.id, -1)}
+                            onClick={() => handleQuantityChange(item._id, -1)}
                             className="p-1.5 sm:p-2 text-white hover:bg-[#0d6a8a] transition-colors"
                           >
                             <FiMinus className="w-3 h-3 sm:w-4 sm:h-4" />
                           </button>
                           <span className="text-white text-xs sm:text-sm font-medium min-w-5 text-center">
-                            {quantities[item.id]}
+                            {quantities[item._id]}
                           </span>
                           <button
-                            onClick={() => handleQuantityChange(item.id, 1)}
+                            onClick={() => handleQuantityChange(item._id, 1)}
                             className="p-1.5 sm:p-2 text-white hover:bg-[#0d6a8a] transition-colors"
                           >
                             <FiPlus className="w-3 h-3 sm:w-4 sm:h-4" />
@@ -172,7 +217,7 @@ const ServiceDetailPage = () => {
                         </div>
                       ) : (
                         <button
-                          onClick={() => handleQuantityChange(item.id, 1)}
+                          onClick={() => handleQuantityChange(item._id, 1)}
                           className="flex items-center gap-1 bg-[#0F7BA0] text-white px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium hover:bg-[#0d6a8a] transition-colors"
                         >
                           Add <FiPlus className="w-3 h-3 sm:w-4 sm:h-4" />

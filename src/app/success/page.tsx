@@ -13,7 +13,7 @@ const SuccessPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4 sm:p-6">
-      <div className={`w-full max-w-[320px] sm:max-w-[380px] bg-white p-6 sm:p-8 rounded-2xl shadow-xl text-center transition-all duration-500 ${mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
+      <div className={`w-full max-w-80 sm:max-w-95 bg-white p-6 sm:p-8 rounded-2xl shadow-xl text-center transition-all duration-500 ${mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}`}>
         {/* Success Icon */}
         <div className={`mx-auto w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-green-100 flex items-center justify-center mb-5 sm:mb-6 transition-all duration-700 delay-200 ${mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`}>
           <FiCheckCircle className={`w-8 h-8 sm:w-10 sm:h-10 text-green-500 transition-all duration-500 delay-300 ${mounted ? 'opacity-100' : 'opacity-0'}`} />

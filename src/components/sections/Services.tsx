@@ -2,8 +2,21 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useScrollAnimation } from '@/hooks';
 import { useTheme } from '@/context';
+import api from '@/services/api';
+
+interface ServiceData {
+  _id: string;
+  name: string;
+  slug: string;
+  shortDescription: string;
+  image: string;
+  pricePerKg: number;
+  pricePerItem: number;
+  pricingType: string;
+}
 
 const Services = () => {
   const { t } = useTheme();
@@ -12,65 +25,23 @@ const Services = () => {
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
   const sliderRef = useRef<HTMLDivElement>(null);
   const autoPlayTimerRef = useRef<NodeJS.Timeout | null>(null);
-  
-  const services = [
-    {
-      id: 1,
-      titleKey: 'washAndFold' as const,
-      descKey: 'washFoldDesc' as const,
-      price: '$4',
-      image: '/Images/Home/service-section/img-1.png',
-    },
-    {
-      id: 2,
-      titleKey: 'pressing' as const,
-      descKey: 'pressingDesc' as const,
-      price: '$2',
-      image: '/Images/Home/service-section/img-2.png',
-    },
-    {
-      id: 3,
-      titleKey: 'dryCleaning' as const,
-      descKey: 'dryCleaningDesc' as const,
-      price: '$5',
-      image: '/Images/Home/service-section/img-3.png',
-    },
-    {
-      id: 4,
-      titleKey: 'steamIroning' as const,
-      descKey: 'steamIroningDesc' as const,
-      price: '$4',
-      image: '/Images/Home/service-section/img-4.png',
-    },
-    {
-      id: 5,
-      titleKey: 'steamIroning' as const,
-      descKey: 'steamIroningDesc' as const,
-      price: '$6',
-      image: '/Images/Home/service/img-1.png',
-    },
-    {
-      id: 6,
-      titleKey: 'dryCleaning' as const,
-      descKey: 'dryCleaningDesc' as const,
-      price: '$3',
-      image: '/Images/Home/service/img-2.png',
-    },
-    {
-      id: 7,
-      titleKey: 'pressing' as const,
-      descKey: 'pressingDesc' as const,
-      price: '$8',
-      image: '/Images/Home/service/img-3.png',
-    },
-    {
-      id: 8,
-      titleKey: 'washAndFold' as const,
-      descKey: 'washFoldDesc' as const,
-      price: '$10',
-      image: '/Images/Home/service/img-4.png',
-    },
-  ];
+  const [services, setServices] = useState<ServiceData[]>([]);
+
+  // Fetch services from backend API
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        const res = await api.get('/services');
+        if (res.data?.status === 'success' && res.data?.data) {
+          setServices(res.data.data);
+        }
+      } catch {
+        // Fallback to empty - cards won't show
+        console.error('Failed to fetch services');
+      }
+    };
+    fetchServices();
+  }, []);
 
   const itemsPerView = 4;
   const maxIndex = Math.max(0, services.length - itemsPerView);
@@ -133,7 +104,7 @@ const Services = () => {
             >
               {services.map((service, index) => (
                 <div
-                  key={service.id}
+                  key={service._id}
                   className={`shrink-0 bg-white rounded-lg sm:rounded-xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-1 sm:hover:-translate-y-2 flex flex-col w-full sm:w-full md:w-[calc(50%-10px)] lg:w-[calc(25%-18px)] ${
                     isVisible ? 'animate-fade-in-up' : 'opacity-0'
                   }`}
@@ -145,7 +116,7 @@ const Services = () => {
                   <div className="h-36 sm:h-40 md:h-44 lg:h-48 xl:h-52 p-2 sm:p-2.5 md:p-3 rounded-lg sm:rounded-xl bg-white overflow-hidden">
                     <Image
                       src={service.image}
-                      alt={t(service.titleKey)}
+                      alt={service.name}
                       width={400}
                       height={300}
                       className="w-full h-full object-cover rounded-lg sm:rounded-xl hover:rounded-none transition-transform duration-500 hover:scale-110"
@@ -155,13 +126,18 @@ const Services = () => {
                   {/* Content */}
                   <div className="p-3 sm:p-4 md:p-5 lg:p-6 flex flex-col grow">
                     <div className="flex items-center justify-between mb-2 md:mb-3 gap-2">
-                      <h3 className="text-base sm:text-lg md:text-xl font-bold text-[#0f2744] truncate">{t(service.titleKey)}</h3>
-                      <span className="text-[#0f2744] font-bold text-sm sm:text-base md:text-lg shrink-0">{service.price}</span>
+                      <h3 className="text-base sm:text-lg md:text-xl font-bold text-[#0f2744] truncate">{service.name}</h3>
+                      <span className="text-[#0f2744] font-bold text-sm sm:text-base md:text-lg shrink-0">
+                        ${service.pricingType === 'per_kg' ? service.pricePerKg : service.pricePerItem}
+                      </span>
                     </div>
-                    <p className="text-[#5a6a7a] text-xs sm:text-sm mb-3 sm:mb-4 md:mb-5 leading-relaxed grow">{t(service.descKey)}</p>
-                    <button className="w-full bg-[#0f2744] text-white py-2.5 sm:py-3 md:py-3.5 rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm md:text-base transition-all duration-300 hover:bg-[#1a3a5c] hover:shadow-lg mt-auto">
+                    <p className="text-[#5a6a7a] text-xs sm:text-sm mb-3 sm:mb-4 md:mb-5 leading-relaxed grow">{service.shortDescription}</p>
+                    <Link
+                      href={`/services/${service.slug}`}
+                      className="w-full block text-center bg-[#0f2744] text-white py-2.5 sm:py-3 md:py-3.5 rounded-lg sm:rounded-xl font-semibold text-xs sm:text-sm md:text-base transition-all duration-300 hover:bg-[#1a3a5c] hover:shadow-lg mt-auto"
+                    >
                       {t('getTheService')}
-                    </button>
+                    </Link>
                   </div>
                 </div>
               ))}

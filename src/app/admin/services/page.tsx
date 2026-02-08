@@ -1,8 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
-import { Service } from '@/types/admin';
 import { 
   FiSearch, 
   FiPlus,
@@ -13,101 +12,130 @@ import {
   FiImage,
   FiDollarSign,
   FiToggleLeft,
-  FiToggleRight
+  FiToggleRight,
+  FiLoader
 } from 'react-icons/fi';
+import api from '@/services/api';
+
+interface Service {
+  _id: string;
+  name: string;
+  slug: string;
+  category: string;
+  description: string;
+  shortDescription?: string;
+  pricingType: 'per_kg' | 'per_item';
+  pricePerKg: number;
+  pricePerItem: number;
+  estimatedDays: number;
+  features: string[];
+  image: string;
+  isActive: boolean;
+  sortOrder: number;
+}
 
 const AdminServicesPage = () => {
   const [showServiceModal, setShowServiceModal] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [services, setServices] = useState<Service[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  const services = [
-    {
-      id: '1',
-      name: 'Wash & Fold',
-      slug: 'wash-fold',
-      category: 'wash-fold',
-      description: 'Professional washing and folding service for your everyday clothes.',
-      priceType: 'per_kg',
-      pricePerKg: 5.00,
-      items: [
-        { name: 'T-Shirt', price: 2.00 },
-        { name: 'Pants', price: 3.00 },
-        { name: 'Shirt', price: 2.50 },
-      ],
-      image: '/Images/Home/service/wash-fold.jpg',
-      isActive: true,
-      sortOrder: 1
-    },
-    {
-      id: '2',
-      name: 'Dry Cleaning',
-      slug: 'dry-cleaning',
-      category: 'dry-cleaning',
-      description: 'Expert dry cleaning for delicate and special garments.',
-      priceType: 'per_item',
-      pricePerKg: 0,
-      items: [
-        { name: 'Suit (2pc)', price: 15.00 },
-        { name: 'Dress', price: 12.00 },
-        { name: 'Coat', price: 18.00 },
-      ],
-      image: '/Images/Home/service/dry-cleaning.jpg',
-      isActive: true,
-      sortOrder: 2
-    },
-    {
-      id: '3',
-      name: 'Wash & Iron',
-      slug: 'wash-iron',
-      category: 'wash-iron',
-      description: 'Complete wash and press service for crisp, ready-to-wear clothes.',
-      priceType: 'per_item',
-      pricePerKg: 0,
-      items: [
-        { name: 'Shirt', price: 3.50 },
-        { name: 'Pants', price: 4.00 },
-        { name: 'Dress', price: 5.00 },
-      ],
-      image: '/Images/Home/service/wash-iron.jpg',
-      isActive: true,
-      sortOrder: 3
-    },
-    {
-      id: '4',
-      name: 'Ironing Only',
-      slug: 'ironing',
-      category: 'ironing',
-      description: 'Professional pressing and ironing service.',
-      priceType: 'per_item',
-      pricePerKg: 0,
-      items: [
-        { name: 'Shirt', price: 1.50 },
-        { name: 'Pants', price: 2.00 },
-        { name: 'Dress', price: 2.50 },
-      ],
-      image: '/Images/Home/service/ironing.jpg',
-      isActive: false,
-      sortOrder: 4
-    },
-    {
-      id: '5',
-      name: 'Special Care',
-      slug: 'special-care',
-      category: 'special-care',
-      description: 'Specialized cleaning for wedding dresses, leather, and delicate items.',
-      priceType: 'per_item',
-      pricePerKg: 0,
-      items: [
-        { name: 'Wedding Dress', price: 80.00 },
-        { name: 'Leather Jacket', price: 35.00 },
-        { name: 'Silk Garment', price: 15.00 },
-      ],
-      image: '/Images/Home/service/special-care.jpg',
-      isActive: true,
-      sortOrder: 5
-    },
-  ];
+  // Form state
+  const [formName, setFormName] = useState('');
+  const [formCategory, setFormCategory] = useState('');
+  const [formDescription, setFormDescription] = useState('');
+  const [formPricingType, setFormPricingType] = useState('per_item');
+  const [formPricePerKg, setFormPricePerKg] = useState('');
+  const [formPricePerItem, setFormPricePerItem] = useState('');
+  const [formEstimatedDays, setFormEstimatedDays] = useState('3');
+  const [formSortOrder, setFormSortOrder] = useState('0');
+  const [formIsActive, setFormIsActive] = useState(true);
+
+  const fetchServices = useCallback(async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/admin/services');
+      if (res.data.status === 'success') {
+        setServices(res.data.data);
+      }
+    } catch {
+      console.error('Failed to fetch services');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchServices(); }, [fetchServices]);
+
+  const openCreateModal = () => {
+    setEditingService(null);
+    setFormName(''); setFormCategory(''); setFormDescription('');
+    setFormPricingType('per_item'); setFormPricePerKg(''); setFormPricePerItem('');
+    setFormEstimatedDays('3'); setFormSortOrder('0'); setFormIsActive(true);
+    setShowServiceModal(true);
+  };
+
+  const openEditModal = (service: Service) => {
+    setEditingService(service);
+    setFormName(service.name); setFormCategory(service.category); setFormDescription(service.description);
+    setFormPricingType(service.pricingType); setFormPricePerKg(service.pricePerKg?.toString() || '');
+    setFormPricePerItem(service.pricePerItem?.toString() || '');
+    setFormEstimatedDays(service.estimatedDays?.toString() || '3');
+    setFormSortOrder(service.sortOrder?.toString() || '0'); setFormIsActive(service.isActive);
+    setShowServiceModal(true);
+  };
+
+  const handleSaveService = async () => {
+    try {
+      setSaving(true);
+      const payload = {
+        name: formName,
+        category: formCategory,
+        description: formDescription,
+        pricingType: formPricingType,
+        pricePerKg: parseFloat(formPricePerKg) || 0,
+        pricePerItem: parseFloat(formPricePerItem) || 0,
+        estimatedDays: parseInt(formEstimatedDays) || 3,
+        sortOrder: parseInt(formSortOrder) || 0,
+        isActive: formIsActive,
+      };
+      if (editingService) {
+        await api.put(`/admin/services/${editingService._id}`, payload);
+      } else {
+        await api.post('/admin/services', payload);
+      }
+      setShowServiceModal(false);
+      fetchServices();
+    } catch {
+      console.error('Failed to save service');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteService = async () => {
+    if (!deleteTarget) return;
+    try {
+      await api.delete(`/admin/services/${deleteTarget}`);
+      setShowDeleteConfirm(false);
+      setDeleteTarget(null);
+      fetchServices();
+    } catch {
+      console.error('Failed to delete service');
+    }
+  };
+
+  const handleToggleActive = async (service: Service) => {
+    try {
+      await api.put(`/admin/services/${service._id}`, { isActive: !service.isActive });
+      fetchServices();
+    } catch {
+      console.error('Failed to toggle service');
+    }
+  };
 
   const categories = [
     { value: 'wash-fold', label: 'Wash & Fold' },
@@ -127,10 +155,7 @@ const AdminServicesPage = () => {
           <p className="text-gray-500 dark:text-gray-400 mt-1">Manage your laundry services and pricing</p>
         </div>
         <button 
-          onClick={() => {
-            setEditingService(null);
-            setShowServiceModal(true);
-          }}
+          onClick={openCreateModal}
           className="flex items-center gap-2 px-4 py-2 bg-[#0F2744] dark:bg-[#0F7BA0] text-white rounded-lg hover:bg-[#1a3a5c] dark:hover:bg-[#0d6a8a] transition-colors"
         >
           <FiPlus className="w-4 h-4" />
@@ -159,10 +184,15 @@ const AdminServicesPage = () => {
       </div>
 
       {/* Services Grid */}
+      {loading ? (
+        <div className="flex items-center justify-center py-16">
+          <FiLoader className="w-8 h-8 text-[#0F7BA0] animate-spin" />
+        </div>
+      ) : (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {services.map((service) => (
           <div 
-            key={service.id}
+            key={service._id}
             className={`bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden ${
               !service.isActive ? 'opacity-60' : ''
             }`}
@@ -193,7 +223,7 @@ const AdminServicesPage = () => {
               <div className="flex items-start justify-between mb-2">
                 <div>
                   <h3 className="font-semibold text-gray-900 dark:text-white">{service.name}</h3>
-                  <p className="text-xs text-[#0F7BA0]">{categories.find(c => c.value === service.category)?.label}</p>
+                  <p className="text-xs text-[#0F7BA0]">{service.category}</p>
                 </div>
                 <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
                   <FiMoreVertical className="w-4 h-4 text-gray-500" />
@@ -209,36 +239,36 @@ const AdminServicesPage = () => {
                 <div className="flex items-center gap-2 mb-2">
                   <FiDollarSign className="w-4 h-4 text-green-500" />
                   <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-                    {service.priceType === 'per_kg' ? `$${service.pricePerKg.toFixed(2)} per kg` : 'Per Item Pricing'}
+                    {service.pricingType === 'per_kg' ? `$${service.pricePerKg?.toFixed(2) || '0.00'} per kg` : `$${service.pricePerItem?.toFixed(2) || '0.00'} per item`}
                   </span>
                 </div>
+                {service.features && service.features.length > 0 && (
                 <div className="flex flex-wrap gap-2">
-                  {service.items.slice(0, 3).map((item, idx) => (
+                  {service.features.slice(0, 3).map((feature, idx) => (
                     <span key={idx} className="text-xs px-2 py-1 bg-white dark:bg-gray-600 rounded-lg text-gray-600 dark:text-gray-300">
-                      {item.name}: ${item.price.toFixed(2)}
+                      {feature}
                     </span>
                   ))}
-                  {service.items.length > 3 && (
+                  {service.features.length > 3 && (
                     <span className="text-xs px-2 py-1 bg-[#0F7BA0]/10 text-[#0F7BA0] rounded-lg">
-                      +{service.items.length - 3} more
+                      +{service.features.length - 3} more
                     </span>
                   )}
                 </div>
+                )}
               </div>
 
               {/* Actions */}
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => {
-                    setEditingService(service as Service);
-                    setShowServiceModal(true);
-                  }}
+                  onClick={() => openEditModal(service)}
                   className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                 >
                   <FiEdit2 className="w-4 h-4" />
                   Edit
                 </button>
                 <button
+                  onClick={() => handleToggleActive(service)}
                   className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg transition-colors ${
                     service.isActive
                       ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
@@ -258,7 +288,7 @@ const AdminServicesPage = () => {
                   )}
                 </button>
                 <button
-                  onClick={() => setShowDeleteConfirm(true)}
+                  onClick={() => { setDeleteTarget(service._id); setShowDeleteConfirm(true); }}
                   className="p-2 bg-red-100 text-red-700 rounded-lg hover:bg-red-200 transition-colors"
                 >
                   <FiTrash2 className="w-4 h-4" />
@@ -268,6 +298,7 @@ const AdminServicesPage = () => {
           </div>
         ))}
       </div>
+      )}
 
       {/* Add/Edit Service Modal */}
       {showServiceModal && (
@@ -294,22 +325,21 @@ const AdminServicesPage = () => {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Service Name *</label>
                     <input 
                       type="text" 
-                      defaultValue={editingService?.name || ''}
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
                       placeholder="e.g., Wash & Fold"
                       className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" 
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Category *</label>
-                    <select 
-                      defaultValue={editingService?.category || ''}
+                    <input 
+                      type="text"
+                      value={formCategory}
+                      onChange={(e) => setFormCategory(e.target.value)}
+                      placeholder="e.g., wash-fold"
                       className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                    >
-                      <option value="">Select Category</option>
-                      {categories.map((cat) => (
-                        <option key={cat.value} value={cat.value}>{cat.label}</option>
-                      ))}
-                    </select>
+                    />
                   </div>
                 </div>
 
@@ -317,7 +347,8 @@ const AdminServicesPage = () => {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description *</label>
                   <textarea 
                     rows={3}
-                    defaultValue={editingService?.description || ''}
+                    value={formDescription}
+                    onChange={(e) => setFormDescription(e.target.value)}
                     placeholder="Service description..."
                     className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white resize-none" 
                   />
@@ -328,56 +359,49 @@ const AdminServicesPage = () => {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Pricing Type *</label>
                   <div className="flex gap-4">
                     <label className="flex items-center gap-2">
-                      <input type="radio" name="priceType" value="per_item" defaultChecked={editingService?.priceType === 'per_item'} />
+                      <input type="radio" name="priceType" value="per_item" checked={formPricingType === 'per_item'} onChange={() => setFormPricingType('per_item')} />
                       <span className="text-gray-700 dark:text-gray-300">Per Item</span>
                     </label>
                     <label className="flex items-center gap-2">
-                      <input type="radio" name="priceType" value="per_kg" defaultChecked={editingService?.priceType === 'per_kg'} />
+                      <input type="radio" name="priceType" value="per_kg" checked={formPricingType === 'per_kg'} onChange={() => setFormPricingType('per_kg')} />
                       <span className="text-gray-700 dark:text-gray-300">Per Kg</span>
                     </label>
                   </div>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Price per Kg ($)</label>
-                  <input 
-                    type="number" 
-                    step="0.01"
-                    defaultValue={editingService?.pricePerKg || ''}
-                    placeholder="0.00"
-                    className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" 
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Price per Kg ($)</label>
+                    <input 
+                      type="number" 
+                      step="0.01"
+                      value={formPricePerKg}
+                      onChange={(e) => setFormPricePerKg(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Price per Item ($)</label>
+                    <input 
+                      type="number" 
+                      step="0.01"
+                      value={formPricePerItem}
+                      onChange={(e) => setFormPricePerItem(e.target.value)}
+                      placeholder="0.00"
+                      className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" 
+                    />
+                  </div>
                 </div>
 
-                {/* Items Pricing */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Item Prices</label>
-                  <div className="space-y-2">
-                    {(editingService?.items || [{ name: '', price: 0 }]).map((item: { name: string; price: number }, idx: number) => (
-                      <div key={idx} className="flex gap-2">
-                        <input 
-                          type="text" 
-                          defaultValue={item.name}
-                          placeholder="Item name"
-                          className="flex-1 px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" 
-                        />
-                        <input 
-                          type="number" 
-                          step="0.01"
-                          defaultValue={item.price}
-                          placeholder="Price"
-                          className="w-24 px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" 
-                        />
-                        <button className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg">
-                          <FiTrash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ))}
-                    <button className="flex items-center gap-2 text-sm text-[#0F7BA0] hover:underline">
-                      <FiPlus className="w-4 h-4" />
-                      Add Item
-                    </button>
-                  </div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Estimated Days</label>
+                  <input 
+                    type="number" 
+                    value={formEstimatedDays}
+                    onChange={(e) => setFormEstimatedDays(e.target.value)}
+                    className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" 
+                  />
                 </div>
 
                 {/* Image Upload */}
@@ -396,7 +420,8 @@ const AdminServicesPage = () => {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Sort Order</label>
                     <input 
                       type="number" 
-                      defaultValue={editingService?.sortOrder || 0}
+                      value={formSortOrder}
+                      onChange={(e) => setFormSortOrder(e.target.value)}
                       className="w-full px-4 py-2.5 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white" 
                     />
                   </div>
@@ -404,7 +429,8 @@ const AdminServicesPage = () => {
                     <label className="flex items-center gap-3 cursor-pointer">
                       <input 
                         type="checkbox" 
-                        defaultChecked={editingService?.isActive ?? true}
+                        checked={formIsActive}
+                        onChange={(e) => setFormIsActive(e.target.checked)}
                         className="w-5 h-5 rounded border-gray-300 text-[#0F7BA0] focus:ring-[#0F7BA0]"
                       />
                       <span className="text-gray-700 dark:text-gray-300">Active</span>
@@ -421,9 +447,11 @@ const AdminServicesPage = () => {
                   Cancel
                 </button>
                 <button
-                  onClick={() => setShowServiceModal(false)}
-                  className="flex-1 px-4 py-2.5 bg-[#0F2744] dark:bg-[#0F7BA0] text-white rounded-lg hover:bg-[#1a3a5c] dark:hover:bg-[#0d6a8a] transition-colors"
+                  onClick={handleSaveService}
+                  disabled={saving}
+                  className="flex-1 px-4 py-2.5 bg-[#0F2744] dark:bg-[#0F7BA0] text-white rounded-lg hover:bg-[#1a3a5c] dark:hover:bg-[#0d6a8a] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
+                  {saving && <FiLoader className="w-4 h-4 animate-spin" />}
                   {editingService ? 'Update Service' : 'Create Service'}
                 </button>
               </div>
@@ -454,7 +482,7 @@ const AdminServicesPage = () => {
                     Cancel
                   </button>
                   <button
-                    onClick={() => setShowDeleteConfirm(false)}
+                    onClick={handleDeleteService}
                     className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
                   >
                     Delete

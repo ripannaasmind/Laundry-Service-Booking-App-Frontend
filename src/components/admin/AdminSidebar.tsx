@@ -2,7 +2,8 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import { useAuthStore } from '@/store/authStore';
 import { 
   FiHome, 
   FiUsers, 
@@ -31,6 +32,8 @@ interface AdminSidebarProps {
 
 const AdminSidebar = ({ isOpen, onClose }: AdminSidebarProps) => {
   const pathname = usePathname();
+  const router = useRouter();
+  const { logout } = useAuthStore();
   const [settingsOpen, setSettingsOpen] = useState(pathname.includes('/admin/settings'));
 
   const menuItems = [
@@ -159,7 +162,8 @@ const AdminSidebar = ({ isOpen, onClose }: AdminSidebarProps) => {
         <div className="p-4 border-t border-white/10 bg-[#0F2744]">
           <button
             onClick={() => {
-              window.location.href = '/admin/login';
+              logout();
+              router.push('/admin/login');
             }}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-gray-300 hover:bg-red-500/20 hover:text-red-400 transition-all duration-200"
           >

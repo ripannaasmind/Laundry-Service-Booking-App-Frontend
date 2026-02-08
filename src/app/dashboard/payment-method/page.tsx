@@ -105,10 +105,10 @@ const PaymentMethodPage = () => {
       {showAddModal && (
         <>
           <div 
-            className="fixed inset-0 bg-black/50 z-[9998] animate-fade-in"
+            className="fixed inset-0 bg-black/50 z-9998 animate-fade-in"
             onClick={() => setShowAddModal(false)}
           />
-          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[9999] w-[90vw] max-w-md animate-scale-in">
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-9999 w-[90vw] max-w-md animate-scale-in">
             <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-2xl">
               <h2 className="text-lg font-bold text-[#0F2744] dark:text-white mb-4">Add New Card</h2>
               

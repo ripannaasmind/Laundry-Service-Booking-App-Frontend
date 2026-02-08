@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import AdminLayout from '@/components/admin/AdminLayout';
 import { 
   FiSearch, 
@@ -12,9 +12,24 @@ import {
   FiCalendar,
   FiChevronLeft,
   FiChevronRight,
-  FiX
+  FiX,
+  FiLoader
 } from 'react-icons/fi';
 import Link from 'next/link';
+import api from '@/services/api';
+
+interface Order {
+  _id: string;
+  orderId: string;
+  itemsSummary: string;
+  itemCount: number;
+  totalPayment: number;
+  status: string;
+  paymentStatus: string;
+  createdAt: string;
+  deliveryDate: string;
+  user?: { _id: string; name: string; email: string; phone?: string };
+}
 
 // Status Badge Component
 const StatusBadge = ({ status }: { status: string }) => {
@@ -55,8 +70,15 @@ const AdminOrdersPage = () => {
   const [activeTab, setActiveTab] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<string | null>(null);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
   const [showStatusModal, setShowStatusModal] = useState(false);
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [newStatus, setNewStatus] = useState('');
+  const [updating, setUpdating] = useState(false);
 
   const tabs = [
     { id: 'all', label: 'All Orders' },
@@ -68,78 +90,43 @@ const AdminOrdersPage = () => {
     { id: 'cancelled', label: 'Cancelled' },
   ];
 
-  const orders = [
-    { 
-      id: '#LH123456', 
-      customer: 'John Doe', 
-      email: 'john@email.com',
-      phone: '+1 234 567 890',
-      items: '3 Wash & Fold, 2 Dry Cleaning',
-      itemCount: 5,
-      amount: '$78.50',
-      status: 'pending',
-      payment: 'pending',
-      date: '2025-02-01',
-      pickupDate: '2025-02-02',
-      deliveryDate: '2025-02-05'
-    },
-    { 
-      id: '#LH123455', 
-      customer: 'Jane Smith', 
-      email: 'jane@email.com',
-      phone: '+1 234 567 891',
-      items: '5 Wash & Iron, 3 Dry Cleaning',
-      itemCount: 8,
-      amount: '$125.00',
-      status: 'in_process',
-      payment: 'paid',
-      date: '2025-02-01',
-      pickupDate: '2025-02-01',
-      deliveryDate: '2025-02-04'
-    },
-    { 
-      id: '#LH123454', 
-      customer: 'Mike Johnson', 
-      email: 'mike@email.com',
-      phone: '+1 234 567 892',
-      items: '2 Ironing',
-      itemCount: 2,
-      amount: '$25.00',
-      status: 'delivered',
-      payment: 'paid',
-      date: '2025-01-30',
-      pickupDate: '2025-01-30',
-      deliveryDate: '2025-02-01'
-    },
-    { 
-      id: '#LH123453', 
-      customer: 'Sarah Williams', 
-      email: 'sarah@email.com',
-      phone: '+1 234 567 893',
-      items: '4 Wash & Fold, 2 Special Care',
-      itemCount: 6,
-      amount: '$92.00',
-      status: 'out_for_delivery',
-      payment: 'paid',
-      date: '2025-01-31',
-      pickupDate: '2025-01-31',
-      deliveryDate: '2025-02-02'
-    },
-    { 
-      id: '#LH123452', 
-      customer: 'Chris Brown', 
-      email: 'chris@email.com',
-      phone: '+1 234 567 894',
-      items: '3 Wash & Fold',
-      itemCount: 3,
-      amount: '$45.00',
-      status: 'cancelled',
-      payment: 'refunded',
-      date: '2025-01-29',
-      pickupDate: '2025-01-30',
-      deliveryDate: '2025-02-01'
-    },
-  ];
+  const fetchOrders = useCallback(async () => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      if (activeTab !== 'all') params.append('status', activeTab);
+      params.append('page', page.toString());
+      params.append('limit', '20');
+      const res = await api.get(`/admin/orders?${params.toString()}`);
+      if (res.data.status === 'success') {
+        setOrders(res.data.data.orders);
+        setTotalPages(res.data.data.totalPages);
+        setTotal(res.data.data.total);
+      }
+    } catch {
+      console.error('Failed to fetch orders');
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTab, page]);
+
+  useEffect(() => { fetchOrders(); }, [fetchOrders]);
+
+  const handleUpdateStatus = async () => {
+    if (!selectedOrder || !newStatus) return;
+    try {
+      setUpdating(true);
+      await api.put(`/admin/orders/${selectedOrder._id}`, { status: newStatus });
+      setShowStatusModal(false);
+      setSelectedOrder(null);
+      setNewStatus('');
+      fetchOrders();
+    } catch {
+      console.error('Failed to update status');
+    } finally {
+      setUpdating(false);
+    }
+  };
 
   const statusOptions = [
     { value: 'pending', label: 'Pending', color: 'bg-yellow-500' },
@@ -152,9 +139,9 @@ const AdminOrdersPage = () => {
     { value: 'cancelled', label: 'Cancelled', color: 'bg-red-500' },
   ];
 
-  const filteredOrders = activeTab === 'all' 
-    ? orders 
-    : orders.filter(order => order.status === activeTab);
+  const filteredOrders = searchQuery
+    ? orders.filter(o => o.orderId.toLowerCase().includes(searchQuery.toLowerCase()) || o.user?.name?.toLowerCase().includes(searchQuery.toLowerCase()))
+    : orders;
 
   return (
     <AdminLayout>
@@ -255,6 +242,11 @@ const AdminOrdersPage = () => {
 
       {/* Orders Table */}
       <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-16">
+            <FiLoader className="w-8 h-8 text-[#0F7BA0] animate-spin" />
+          </div>
+        ) : (
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700/50">
@@ -270,30 +262,30 @@ const AdminOrdersPage = () => {
             </thead>
             <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
               {filteredOrders.map((order) => (
-                <tr key={order.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                <tr key={order._id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
                   <td className="px-4 lg:px-6 py-4">
                     <div>
-                      <span className="font-medium text-gray-900 dark:text-white">{order.id}</span>
-                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{order.date}</p>
+                      <span className="font-medium text-gray-900 dark:text-white">{order.orderId}</span>
+                      <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{new Date(order.createdAt).toLocaleDateString()}</p>
                     </div>
                   </td>
                   <td className="px-4 lg:px-6 py-4">
                     <div>
-                      <span className="text-gray-900 dark:text-white font-medium">{order.customer}</span>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">{order.phone}</p>
+                      <span className="text-gray-900 dark:text-white font-medium">{order.user?.name || 'N/A'}</span>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">{order.user?.phone || order.user?.email || ''}</p>
                     </div>
                   </td>
                   <td className="hidden lg:table-cell px-4 lg:px-6 py-4">
                     <div>
-                      <span className="text-gray-600 dark:text-gray-400 text-sm">{order.items}</span>
+                      <span className="text-gray-600 dark:text-gray-400 text-sm">{order.itemsSummary}</span>
                       <p className="text-xs text-gray-400 dark:text-gray-500">{order.itemCount} items</p>
                     </div>
                   </td>
                   <td className="px-4 lg:px-6 py-4">
-                    <span className="font-semibold text-gray-900 dark:text-white">{order.amount}</span>
+                    <span className="font-semibold text-gray-900 dark:text-white">${order.totalPayment.toFixed(2)}</span>
                   </td>
                   <td className="hidden sm:table-cell px-4 lg:px-6 py-4">
-                    <PaymentBadge status={order.payment} />
+                    <PaymentBadge status={order.paymentStatus} />
                   </td>
                   <td className="px-4 lg:px-6 py-4">
                     <StatusBadge status={order.status} />
@@ -301,7 +293,7 @@ const AdminOrdersPage = () => {
                   <td className="px-4 lg:px-6 py-4">
                     <div className="flex items-center gap-2">
                       <Link
-                        href={`/admin/orders/${order.id.replace('#', '')}`}
+                        href={`/admin/orders/${order._id}`}
                         className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors"
                         title="View Details"
                       >
@@ -309,7 +301,8 @@ const AdminOrdersPage = () => {
                       </Link>
                       <button
                         onClick={() => {
-                          setSelectedOrder(order.id);
+                          setSelectedOrder(order);
+                          setNewStatus(order.status);
                           setShowStatusModal(true);
                         }}
                         className="p-2 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-colors"
@@ -330,22 +323,39 @@ const AdminOrdersPage = () => {
             </tbody>
           </table>
         </div>
+        )}
 
         {/* Pagination */}
         <div className="p-4 border-t border-gray-100 dark:border-gray-700 flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-gray-500 dark:text-gray-400">
-            Showing 1-5 of 125 orders
+            Showing {Math.min((page - 1) * 20 + 1, total)}-{Math.min(page * 20, total)} of {total} orders
           </p>
           <div className="flex items-center gap-2">
-            <button className="p-2 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50" disabled>
+            <button 
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="p-2 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+            >
               <FiChevronLeft className="w-5 h-5" />
             </button>
-            <button className="px-4 py-2 bg-[#0F2744] dark:bg-[#0F7BA0] text-white rounded-lg">1</button>
-            <button className="px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">2</button>
-            <button className="px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">3</button>
-            <span className="px-2">...</span>
-            <button className="px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">25</button>
-            <button className="p-2 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700">
+            {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => i + 1).map(p => (
+              <button
+                key={p}
+                onClick={() => setPage(p)}
+                className={`px-4 py-2 rounded-lg ${
+                  page === p
+                    ? 'bg-[#0F2744] dark:bg-[#0F7BA0] text-white'
+                    : 'border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+            <button 
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="p-2 border border-gray-200 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 disabled:opacity-50"
+            >
               <FiChevronRight className="w-5 h-5" />
             </button>
           </div>
@@ -367,12 +377,17 @@ const AdminOrdersPage = () => {
                   <FiX className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Order: {selectedOrder}</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">Order: {selectedOrder?.orderId}</p>
               <div className="space-y-2">
                 {statusOptions.map((option) => (
                   <button
                     key={option.value}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
+                    onClick={() => setNewStatus(option.value)}
+                    className={`w-full flex items-center gap-3 p-3 rounded-xl border transition-colors text-left ${
+                      newStatus === option.value
+                        ? 'border-[#0F7BA0] bg-[#0F7BA0]/5 dark:bg-[#0F7BA0]/10'
+                        : 'border-gray-200 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
+                    }`}
                   >
                     <div className={`w-3 h-3 rounded-full ${option.color}`} />
                     <span className="text-gray-700 dark:text-gray-300">{option.label}</span>
@@ -387,9 +402,11 @@ const AdminOrdersPage = () => {
                   Cancel
                 </button>
                 <button
-                  onClick={() => setShowStatusModal(false)}
-                  className="flex-1 px-4 py-2.5 bg-[#0F2744] dark:bg-[#0F7BA0] text-white rounded-lg hover:bg-[#1a3a5c] dark:hover:bg-[#0d6a8a] transition-colors"
+                  onClick={handleUpdateStatus}
+                  disabled={updating}
+                  className="flex-1 px-4 py-2.5 bg-[#0F2744] dark:bg-[#0F7BA0] text-white rounded-lg hover:bg-[#1a3a5c] dark:hover:bg-[#0d6a8a] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                 >
+                  {updating && <FiLoader className="w-4 h-4 animate-spin" />}
                   Update Status
                 </button>
               </div>
